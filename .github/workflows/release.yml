@@ -1,0 +1,83 @@
+name: Release Obsidian Plugin
+
+# Triggered by pushing a SemVer tag (v*). Builds the production bundle
+# and attaches main.js, manifest.json, and logo SVGs to the GitHub
+# Release - the same artefacts the Obsidian Community Plugins store
+# expects to download from the GitHub release.
+
+on:
+    push:
+        tags:
+            - "v*"
+
+permissions:
+    contents: write
+
+jobs:
+    build-and-release:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Set up pnpm
+              uses: pnpm/action-setup@v4
+              with:
+                  version: 11
+
+            - name: Set up Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: "20"
+                  cache: "pnpm"
+                  cache-dependency-path: pnpm-lock.yaml
+
+            - name: Install dependencies
+              run: pnpm install --frozen-lockfile
+
+            - name: Typecheck
+              run: pnpm run typecheck
+
+            - name: Run unit tests
+              run: pnpm test
+
+            - name: Build production bundle
+              run: pnpm run build
+
+            - name: Extract version from tag
+              id: version
+              run: |
+                  TAG="${GITHUB_REF##*/}"
+                  VERSION="${TAG#v}"
+                  echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+            - name: Verify manifest version matches tag
+              run: |
+                  MANIFEST_VERSION="$(node -e 'process.stdout.write(require("./manifest.json").version)')"
+                  if [ "$MANIFEST_VERSION" != "${{ steps.version.outputs.version }}" ]; then
+                      echo "manifest.json version ($MANIFEST_VERSION) does not match tag (${{ steps.version.outputs.version }})"
+                      exit 1
+                  fi
+
+            - name: Collect release artefacts
+              run: |
+                  mkdir -p release
+                  cp main.js manifest.json logo-dark.svg logo-light.svg release/
+                  if [ -f styles.css ]; then cp styles.css release/; fi
+
+            - name: Publish GitHub Release
+              uses: softprops/action-gh-release@v2
+              with:
+                  tag_name: ${{ github.ref_name }}
+                  name: Unabyss Obsidian Plugin ${{ steps.version.outputs.version }}
+                  draft: false
+                  prerelease: false
+                  files: |
+                      release/main.js
+                      release/manifest.json
+                      release/logo-dark.svg
+                      release/logo-light.svg
+                      release/styles.css
+                  fail_on_unmatched_files: false
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output (committed for releases; gitignored during dev iteration)
+main.js
+*.js.map
+
+# Local plugin state if the folder is symlinked into a vault during dev
+data.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*

@@ -80,7 +80,7 @@ export default class UnabyssPlugin extends Plugin {
         });
 
         this.addCommand({
-            id: "unabyss-sync-now",
+            id: "sync-now",
             name: "Sync now (both directions)",
             callback: () => {
                 this.runManualSync().catch((err) => {
@@ -90,7 +90,7 @@ export default class UnabyssPlugin extends Plugin {
         });
 
         this.addCommand({
-            id: "unabyss-sync-outbound",
+            id: "sync-outbound",
             name: "Sync outbound now",
             callback: () => {
                 this.runOutboundSync(true)
@@ -107,7 +107,7 @@ export default class UnabyssPlugin extends Plugin {
         });
 
         this.addCommand({
-            id: "unabyss-sync-inbound",
+            id: "sync-inbound",
             name: "Sync inbound now",
             callback: () => {
                 this.runInboundSync(true)
@@ -124,7 +124,7 @@ export default class UnabyssPlugin extends Plugin {
         });
 
         this.addCommand({
-            id: "unabyss-force-full-resync",
+            id: "force-full-resync",
             name: "Force full resync",
             callback: () => {
                 this.forceFullResync()

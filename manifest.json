@@ -3,9 +3,8 @@
     "name": "Unabyss",
     "version": "1.0.0",
     "minAppVersion": "1.5.0",
-    "description": "Two-way OAuth sync between your Obsidian vault and your Unabyss memory.",
+    "description": "Sync notes and exports between your Obsidian vault and Unabyss.",
     "author": "Unabyss",
     "authorUrl": "https://unabyss.com",
-    "fundingUrl": "https://unabyss.com",
     "isDesktopOnly": false
 }

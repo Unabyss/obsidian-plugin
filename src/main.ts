@@ -62,6 +62,7 @@ export default class UnabyssPlugin extends Plugin {
     private manifestCache!: ManifestCache;
     private api: UnabyssApiClient | null = null;
     private oauthClient: OAuthClient = new OAuthClient();
+    private settingTab: UnabyssSettingTab | null = null;
     private outboundDebounceTimer: number | null = null;
     private safetyNetIntervalHandle: number | null = null;
     private outboundInFlight = false;
@@ -133,7 +134,8 @@ export default class UnabyssPlugin extends Plugin {
             },
         });
 
-        this.addSettingTab(new UnabyssSettingTab(this.app, this));
+        this.settingTab = new UnabyssSettingTab(this.app, this);
+        this.addSettingTab(this.settingTab);
 
         this.registerVaultWatcher();
         this.installSafetyNetTimer();
@@ -468,6 +470,11 @@ export default class UnabyssPlugin extends Plugin {
         this.settings.auth = null;
         await this.savePluginData();
         this.rebuildApiClient();
+        this.refreshSettingsTab();
+    }
+
+    private refreshSettingsTab(): void {
+        this.settingTab?.display();
     }
 
     private async handleOAuthCallback(params: Record<string, string>): Promise<void> {
@@ -480,6 +487,7 @@ export default class UnabyssPlugin extends Plugin {
             this.settings.auth = auth;
             await this.savePluginData();
             this.rebuildApiClient();
+            this.refreshSettingsTab();
             new Notice(`Connected to Unabyss as ${auth.userEmail || "(unknown)"}.`);
         } catch (err) {
             new Notice(`Connect failed: ${describeError(err)}`);

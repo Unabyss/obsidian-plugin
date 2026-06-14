@@ -85,7 +85,7 @@ Open Settings -> Community plugins -> Unabyss.
 - Once connected and with the include-folder list configured to your
   taste, every modify / create / delete on a markdown file kicks off a
   debounced outbound sync after **5 seconds** of quiet.
-- Manual: **Settings -> Unabyss -> Manual sync -> Sync now** (or the
+- Manual: **Settings -> Unabyss -> Sync now** (or the
   command palette: `Unabyss: Sync outbound now`).
 - The hourly safety-net timer fires both directions regardless of
   file events, so the plugin recovers from missed events and external
@@ -104,7 +104,7 @@ Open Settings -> Community plugins -> Unabyss.
   next sync.
 - Soft-deleted exports honour your **When an export is deleted in
   Unabyss** setting.
-- Manual: **Settings -> Unabyss -> Manual sync -> Sync now** or the
+- Manual: **Settings -> Unabyss -> Sync now** or the
   command palette: `Unabyss: Sync inbound now`.
 
 ### Disconnecting

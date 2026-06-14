@@ -28,7 +28,7 @@ import {
     TFolder,
 } from "obsidian";
 import type UnabyssPlugin from "./main";
-import { ProgressSnapshot, ProgressTracker } from "./progress";
+import { ProgressSnapshot } from "./progress";
 import { ExportDeleteBehaviour } from "./types";
 
 type SubscriptionDisposer = () => void;
@@ -47,10 +47,9 @@ export class UnabyssSettingTab extends PluginSettingTab {
         const { containerEl } = this;
         containerEl.empty();
         this.renderHeader(containerEl);
-        this.renderAuthState(containerEl);
+        this.renderAccountSection(containerEl);
         this.renderOutboundSection(containerEl);
         this.renderInboundSection(containerEl);
-        this.renderSyncActions(containerEl);
         this.renderAdvancedSection(containerEl);
     }
 
@@ -104,7 +103,7 @@ export class UnabyssSettingTab extends PluginSettingTab {
             });
     }
 
-    private renderAuthState(containerEl: HTMLElement): void {
+    private renderAccountSection(containerEl: HTMLElement): void {
         const auth = this.plugin.settings.auth;
         const setting = new Setting(containerEl).setName("Account");
 
@@ -124,23 +123,45 @@ export class UnabyssSettingTab extends PluginSettingTab {
                     }
                 }),
             );
-            return;
+        } else {
+            setting.setDesc("Not connected.");
+            setting.addButton((btn) =>
+                btn.setCta().setButtonText("Connect").onClick(async () => {
+                    btn.setDisabled(true);
+                    try {
+                        await this.plugin.beginConnect();
+                        new Notice("Opened consent page in your browser.");
+                    } catch (err) {
+                        new Notice(`Connect failed: ${describeError(err)}`);
+                    } finally {
+                        btn.setDisabled(false);
+                    }
+                }),
+            );
         }
 
-        setting.setDesc("Not connected.");
-        setting.addButton((btn) =>
-            btn.setCta().setButtonText("Connect").onClick(async () => {
-                btn.setDisabled(true);
-                try {
-                    await this.plugin.beginConnect();
-                    new Notice("Opened consent page in your browser.");
-                } catch (err) {
-                    new Notice(`Connect failed: ${describeError(err)}`);
-                } finally {
-                    btn.setDisabled(false);
-                }
-            }),
-        );
+        new Setting(containerEl)
+            .setName("Sync now (both directions)")
+            .setDesc("Run both enabled directions in sequence, same as the hourly timer fires.")
+            .addButton((btn) =>
+                btn
+                    .setCta()
+                    .setButtonText("Sync now")
+                    .setDisabled(this.plugin.settings.auth === null)
+                    .onClick(async () => {
+                        btn.setDisabled(true);
+                        try {
+                            await this.plugin.runManualSync();
+                        } catch (err) {
+                            new Notice(`Sync failed: ${describeError(err)}`);
+                        } finally {
+                            btn.setDisabled(this.plugin.settings.auth === null);
+                            this.display();
+                        }
+                    }),
+            );
+
+        this.renderCombinedSyncStatus(containerEl);
     }
 
     private renderOutboundSection(containerEl: HTMLElement): void {
@@ -187,7 +208,6 @@ export class UnabyssSettingTab extends PluginSettingTab {
             this.display();
         });
 
-        this.renderProgressRow(containerEl, "Outbound status", this.plugin.outboundProgress);
     }
 
     private renderInboundSection(containerEl: HTMLElement): void {
@@ -241,33 +261,6 @@ export class UnabyssSettingTab extends PluginSettingTab {
                     .onChange(async (value) => {
                         this.plugin.settings.exportDeleteBehaviour = value as ExportDeleteBehaviour;
                         await this.plugin.saveSettings();
-                    }),
-            );
-
-        this.renderProgressRow(containerEl, "Inbound status", this.plugin.inboundProgress);
-    }
-
-    private renderSyncActions(containerEl: HTMLElement): void {
-        containerEl.createEl("h3", { text: "Manual sync" });
-
-        new Setting(containerEl)
-            .setName("Sync now (both directions)")
-            .setDesc("Run both enabled directions in sequence, same as the hourly timer fires.")
-            .addButton((btn) =>
-                btn
-                    .setCta()
-                    .setButtonText("Sync now")
-                    .setDisabled(this.plugin.settings.auth === null)
-                    .onClick(async () => {
-                        btn.setDisabled(true);
-                        try {
-                            await this.plugin.runManualSync();
-                        } catch (err) {
-                            new Notice(`Sync failed: ${describeError(err)}`);
-                        } finally {
-                            btn.setDisabled(this.plugin.settings.auth === null);
-                            this.display();
-                        }
                     }),
             );
     }
@@ -334,17 +327,20 @@ export class UnabyssSettingTab extends PluginSettingTab {
         }
     }
 
-    private renderProgressRow(
-        containerEl: HTMLElement,
-        name: string,
-        tracker: ProgressTracker,
-    ): void {
-        const setting = new Setting(containerEl).setName(name);
-        const valueEl = setting.descEl.createSpan();
-        const dispose = tracker.subscribe((snapshot) => {
-            valueEl.setText(formatProgress(snapshot));
-        });
-        this.disposers.push(dispose);
+    private renderCombinedSyncStatus(containerEl: HTMLElement): void {
+        const setting = new Setting(containerEl).setName("Sync status");
+        const outboundEl = setting.descEl.createDiv();
+        const inboundEl = setting.descEl.createDiv();
+
+        const updateOutbound = (snapshot: ProgressSnapshot): void => {
+            outboundEl.setText(`Outbound: ${formatProgress(snapshot)}`);
+        };
+        const updateInbound = (snapshot: ProgressSnapshot): void => {
+            inboundEl.setText(`Inbound: ${formatProgress(snapshot)}`);
+        };
+
+        this.disposers.push(this.plugin.outboundProgress.subscribe(updateOutbound));
+        this.disposers.push(this.plugin.inboundProgress.subscribe(updateInbound));
     }
 
     private unsubscribeAll(): void {

@@ -28,6 +28,7 @@ import {
     TFolder,
 } from "obsidian";
 import type UnabyssPlugin from "./main";
+import { DEFAULT_EXPORT_FOLDER } from "./types";
 import { ProgressSnapshot } from "./progress";
 import { ExportDeleteBehaviour } from "./types";
 
@@ -47,6 +48,7 @@ export class UnabyssSettingTab extends PluginSettingTab {
         const { containerEl } = this;
         containerEl.empty();
         this.renderHeader(containerEl);
+        this.renderConnectionBanner(containerEl);
         this.renderAccountSection(containerEl);
         this.renderOutboundSection(containerEl);
         this.renderInboundSection(containerEl);
@@ -103,6 +105,60 @@ export class UnabyssSettingTab extends PluginSettingTab {
             });
     }
 
+    private renderConnectionBanner(containerEl: HTMLElement): void {
+        if (!this.plugin.shouldShowConnectionBanner()) {
+            return;
+        }
+        const auth = this.plugin.settings.auth;
+        const banner = containerEl.createDiv({ cls: "unabyss-connection-banner" });
+        banner.style.marginBottom = "16px";
+        banner.style.padding = "12px 14px";
+        banner.style.borderRadius = "8px";
+        banner.style.border = "1px solid var(--background-modifier-border)";
+        banner.style.background = "var(--background-secondary)";
+
+        banner.createEl("p", {
+            text:
+                `Connected as ${auth?.userEmail || "(unknown)"}. Click Sync now to register this vault ` +
+                "with Unabyss and start syncing.",
+        });
+        banner.createEl("p", {
+            text: `Exports from Unabyss will be written to "${DEFAULT_EXPORT_FOLDER}" in this vault. ` +
+                "Change the folder under Inbound settings.",
+            cls: "setting-item-description",
+        });
+
+        const actions = banner.createDiv();
+        actions.style.display = "flex";
+        actions.style.flexWrap = "wrap";
+        actions.style.gap = "8px";
+        actions.style.marginTop = "10px";
+
+        const syncBtn = actions.createEl("button", { text: "Sync now" });
+        syncBtn.classList.add("mod-cta");
+        syncBtn.onclick = async () => {
+            syncBtn.disabled = true;
+            try {
+                await this.plugin.runManualSync();
+            } catch (err) {
+                new Notice(`Sync failed: ${describeError(err)}`);
+            } finally {
+                syncBtn.disabled = false;
+                this.display();
+            }
+        };
+
+        const dismissBtn = actions.createEl("button", { text: "Dismiss" });
+        dismissBtn.onclick = async () => {
+            dismissBtn.disabled = true;
+            try {
+                await this.plugin.dismissConnectionBanner();
+            } finally {
+                dismissBtn.disabled = false;
+            }
+        };
+    }
+
     private renderAccountSection(containerEl: HTMLElement): void {
         const auth = this.plugin.settings.auth;
         const setting = new Setting(containerEl).setName("Account");
@@ -142,7 +198,7 @@ export class UnabyssSettingTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName("Sync now (both directions)")
-            .setDesc("Run both enabled directions in sequence, same as the hourly timer fires.")
+            .setDesc("Run both enabled directions concurrently, same as the hourly timer fires.")
             .addButton((btn) =>
                 btn
                     .setCta()
@@ -233,7 +289,7 @@ export class UnabyssSettingTab extends PluginSettingTab {
             .setDesc("Vault folder where Unabyss exports are written. Pick a folder to enable inbound sync.")
             .addText((text) => {
                 const inputEl = text.inputEl;
-                text.setPlaceholder("Unabyss/Exports")
+                text.setPlaceholder(DEFAULT_EXPORT_FOLDER)
                     .setValue(this.plugin.settings.exportTargetFolder)
                     .onChange(async (value) => {
                         this.plugin.settings.exportTargetFolder = value.trim();

@@ -60,6 +60,9 @@ export const OUTBOUND_DEBOUNCE_MS = 5_000;
  */
 export const SAFETY_NET_INTERVAL_MS = 60 * 60 * 1_000;
 
+/** Default inbound export folder when the user has not picked one yet. */
+export const DEFAULT_EXPORT_FOLDER = "Unabyss Exports";
+
 /**
  * Wire-format trailer appended to the bottom of every Unabyss export
  * we write into the vault so subsequent syncs can detect that a slug
@@ -82,6 +85,8 @@ export interface PluginSettings {
     /** Master enable switch for the Unabyss -> Obsidian direction. */
     inboundEnabled: boolean;
     auth: AuthState | null;
+    /** When true, hide the post-connection guidance banner in settings. */
+    bannerDismissed: boolean;
 }
 
 export const DEFAULT_SETTINGS: PluginSettings = {
@@ -93,6 +98,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     outboundEnabled: true,
     inboundEnabled: true,
     auth: null,
+    bannerDismissed: false,
 };
 
 /**
@@ -163,9 +169,10 @@ export interface SyncFinalizeRequest {
 }
 
 export interface SyncFinalizeResponse {
+    import_id: string;
     deleted: number;
     restored: number;
-    last_synced_at: string;
+    status: string;
 }
 
 export interface VaultRow {
@@ -223,7 +230,7 @@ export interface SyncOutboundReport {
     rejected: NoteUploadRejection[];
     deleted: number;
     restored: number;
-    lastSyncedAt: string;
+    lastSyncedAt?: string;
 }
 
 /** Per-row outcome surfaced from one inbound sync pass. */

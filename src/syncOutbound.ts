@@ -16,8 +16,8 @@
  *   6. For every hash the server reports as missing, upload the body
  *      via ``notes/upload/`` in batches of
  *      ``NOTE_BODIES_MAX_PER_REQUEST``.
- *   7. POST the full hash set to ``sync-finalize/`` and bump the local
- *      ``last_synced_at``.
+ *   7. POST the full hash set to ``sync-finalize/`` and accept the
+ *      async embedding response.
  *
  * The manifest cache is best-effort. Files whose ``mtime`` matches the
  * cache row skip hash recomputation; the server-side hash diff is the
@@ -104,6 +104,7 @@ export async function runOutboundSync(deps: OutboundSyncDeps): Promise<SyncOutbo
         hashes: allHashes,
         vault_display_name: deps.vaultDisplayName || undefined,
     });
+    deps.progress?.report({ label: "Sync accepted - embedding in Unabyss" });
     return {
         scanned: scanned.length,
         skippedOversize,
@@ -111,7 +112,6 @@ export async function runOutboundSync(deps: OutboundSyncDeps): Promise<SyncOutbo
         rejected: uploadOutcome.rejected,
         deleted: finalize.deleted,
         restored: finalize.restored,
-        lastSyncedAt: finalize.last_synced_at,
     };
 }
 

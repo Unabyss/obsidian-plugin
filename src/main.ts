@@ -33,6 +33,7 @@ import { runInboundSync } from "./syncInbound";
 import { runOutboundSync } from "./syncOutbound";
 import {
     AuthState,
+    DEFAULT_EXPORT_FOLDER,
     DEFAULT_SETTINGS,
     ManifestCacheData,
     OAUTH_PROTOCOL_ACTION,
@@ -67,6 +68,17 @@ export default class UnabyssPlugin extends Plugin {
     private safetyNetIntervalHandle: number | null = null;
     private outboundInFlight = false;
     private inboundInFlight = false;
+    private saveChain: Promise<void> = Promise.resolve();
+
+    shouldShowConnectionBanner(): boolean {
+        return Boolean(this.settings.auth) && !this.settings.bannerDismissed;
+    }
+
+    async dismissConnectionBanner(): Promise<void> {
+        this.settings.bannerDismissed = true;
+        await this.savePluginData();
+        this.refreshSettingsTab();
+    }
 
     async onload(): Promise<void> {
         await this.loadPluginData();
@@ -212,41 +224,58 @@ export default class UnabyssPlugin extends Plugin {
      * block the other.
      */
     async runManualSync(): Promise<{ outbound: SyncOutboundReport | null; inbound: SyncInboundReport | null }> {
+        type DirectionOutcome<T> =
+            | { ok: true; report: T }
+            | { ok: false; err: unknown };
+
+        const outboundP: Promise<DirectionOutcome<SyncOutboundReport> | null> =
+            this.settings.outboundEnabled
+                ? this.runOutboundSync(true)
+                      .then((report) => ({ ok: true as const, report }))
+                      .catch((err) => ({ ok: false as const, err }))
+                : Promise.resolve(null);
+
+        const inboundP: Promise<DirectionOutcome<SyncInboundReport> | null> =
+            this.settings.inboundEnabled
+                ? this.runInboundSync(true)
+                      .then((report) => ({ ok: true as const, report }))
+                      .catch((err) => ({ ok: false as const, err }))
+                : Promise.resolve(null);
+
+        const [outboundSettled, inboundSettled] = await Promise.allSettled([outboundP, inboundP]);
+
         let outbound: SyncOutboundReport | null = null;
         let inbound: SyncInboundReport | null = null;
-        let outboundErr: unknown = null;
-        let inboundErr: unknown = null;
 
-        if (this.settings.outboundEnabled) {
-            try {
-                outbound = await this.runOutboundSync(true);
-            } catch (err) {
-                outboundErr = err;
+        if (outboundSettled.status === "fulfilled" && outboundSettled.value) {
+            if (outboundSettled.value.ok) {
+                outbound = outboundSettled.value.report;
+            } else {
+                new Notice(`Outbound failed: ${describeError(outboundSettled.value.err)}`);
             }
+        } else if (outboundSettled.status === "rejected") {
+            new Notice(`Outbound failed: ${describeError(outboundSettled.reason)}`);
         }
-        if (this.settings.inboundEnabled) {
-            try {
-                inbound = await this.runInboundSync(true);
-            } catch (err) {
-                inboundErr = err;
+
+        if (inboundSettled.status === "fulfilled" && inboundSettled.value) {
+            if (inboundSettled.value.ok) {
+                inbound = inboundSettled.value.report;
+            } else {
+                new Notice(`Inbound failed: ${describeError(inboundSettled.value.err)}`);
             }
+        } else if (inboundSettled.status === "rejected") {
+            new Notice(`Inbound failed: ${describeError(inboundSettled.reason)}`);
         }
 
         if (outbound) {
             new Notice(
-                `Outbound \u2014 ${outbound.uploaded} uploaded, ${outbound.deleted} deleted, ${outbound.restored} restored.`,
+                `Outbound \u2014 ${outbound.uploaded} uploaded, ${outbound.deleted} deleted, ${outbound.restored} restored; embedding in Unabyss.`,
             );
         }
         if (inbound) {
             new Notice(
                 `Inbound \u2014 ${inbound.written} written, ${inbound.deleted} deleted, ${inbound.moved} moved.`,
             );
-        }
-        if (outboundErr) {
-            new Notice(`Outbound failed: ${describeError(outboundErr)}`);
-        }
-        if (inboundErr) {
-            new Notice(`Inbound failed: ${describeError(inboundErr)}`);
         }
         return { outbound, inbound };
     }
@@ -278,8 +307,10 @@ export default class UnabyssPlugin extends Plugin {
                 progress: this.outboundProgress,
             });
             this.outboundProgress.succeed(
-                `Outbound done - ${report.uploaded} uploaded, ${report.deleted} deleted.`,
+                `Outbound accepted - ${report.uploaded} uploaded, ${report.deleted} deleted; embedding in Unabyss.`,
             );
+            this.settings.bannerDismissed = true;
+            await this.savePluginData();
             return report;
         } catch (err) {
             this.outboundProgress.fail(describeError(err));
@@ -296,12 +327,10 @@ export default class UnabyssPlugin extends Plugin {
         if (!this.api) {
             throw new Error("Connect to Unabyss before running inbound sync.");
         }
-        if (!this.settings.exportTargetFolder.trim()) {
-            throw new Error("Pick an export target folder in settings before running inbound sync.");
-        }
         if (this.inboundInFlight) {
             throw new Error("Inbound sync is already running.");
         }
+        await this.ensureExportTargetFolder();
         this.inboundInFlight = true;
         try {
             return await runInboundSync({
@@ -375,24 +404,29 @@ export default class UnabyssPlugin extends Plugin {
         if (!this.api) {
             return;
         }
-        if (this.settings.outboundEnabled && !this.outboundInFlight) {
-            try {
-                await this.runOutboundSync(false);
-            } catch (err) {
-                console.warn("Unabyss safety-net outbound failed", err);
-            }
+        const outboundP =
+            this.settings.outboundEnabled && !this.outboundInFlight
+                ? this.runOutboundSync(false).catch((err) => {
+                      console.warn("Unabyss safety-net outbound failed", err);
+                  })
+                : Promise.resolve();
+        const inboundP =
+            this.settings.inboundEnabled && !this.inboundInFlight
+                ? this.ensureExportTargetFolder()
+                      .then(() => this.runInboundSync(false))
+                      .catch((err) => {
+                          console.warn("Unabyss safety-net inbound failed", err);
+                      })
+                : Promise.resolve();
+        await Promise.allSettled([outboundP, inboundP]);
+    }
+
+    private async ensureExportTargetFolder(): Promise<void> {
+        if (this.settings.exportTargetFolder.trim()) {
+            return;
         }
-        if (
-            this.settings.inboundEnabled &&
-            this.settings.exportTargetFolder.trim() !== "" &&
-            !this.inboundInFlight
-        ) {
-            try {
-                await this.runInboundSync(false);
-            } catch (err) {
-                console.warn("Unabyss safety-net inbound failed", err);
-            }
-        }
+        this.settings.exportTargetFolder = DEFAULT_EXPORT_FOLDER;
+        await this.savePluginData();
     }
 
     private scheduleOutboundDebounce(): void {
@@ -463,7 +497,10 @@ export default class UnabyssPlugin extends Plugin {
             settings: this.settings,
             manifestCache: this.manifestCacheData,
         };
-        await this.saveData(data);
+        this.saveChain = this.saveChain
+            .catch(() => {})
+            .then(() => this.saveData(data));
+        return this.saveChain;
     }
 
     private async clearAuth(): Promise<void> {
@@ -488,7 +525,9 @@ export default class UnabyssPlugin extends Plugin {
             await this.savePluginData();
             this.rebuildApiClient();
             this.refreshSettingsTab();
-            new Notice(`Connected to Unabyss as ${auth.userEmail || "(unknown)"}.`);
+            new Notice(
+                "Connected to Unabyss. Open settings and run Sync now to register this vault.",
+            );
         } catch (err) {
             new Notice(`Connect failed: ${describeError(err)}`);
         }

@@ -76,12 +76,19 @@ jobs:
                   subject-path: |
                       release/main.js
                       release/manifest.json
+                      release/styles.css
 
             - name: Publish GitHub Release
               uses: softprops/action-gh-release@v2
               with:
                   tag_name: ${{ steps.version.outputs.version }}
                   name: Unabyss Obsidian Plugin ${{ steps.version.outputs.version }}
+                  body: |
+                      Unabyss plugin release ${{ steps.version.outputs.version }}.
+
+                      Installable assets: `main.js`, `manifest.json`, `styles.css`.
+                      Each is covered by a GitHub build provenance attestation.
+                  generate_release_notes: true
                   draft: false
                   prerelease: false
                   files: |

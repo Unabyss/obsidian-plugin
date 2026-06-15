@@ -225,7 +225,7 @@ export class UnabyssSettingTab extends PluginSettingTab {
     }
 
     private renderOutboundSection(containerEl: HTMLElement): void {
-        new Setting(containerEl).setName("Obsidian \u2192 Unabyss (outbound)").setHeading();
+        new Setting(containerEl).setName("Outbound sync").setHeading();
 
         new Setting(containerEl)
             .setName("Sync outbound")
@@ -271,7 +271,7 @@ export class UnabyssSettingTab extends PluginSettingTab {
     }
 
     private renderInboundSection(containerEl: HTMLElement): void {
-        new Setting(containerEl).setName("Unabyss \u2192 Obsidian (inbound)").setHeading();
+        new Setting(containerEl).setName("Inbound sync").setHeading();
 
         new Setting(containerEl)
             .setName("Sync inbound")

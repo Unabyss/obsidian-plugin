@@ -4,6 +4,11 @@ name: Release Obsidian Plugin
 # and attaches main.js, manifest.json, and logo SVGs to the GitHub
 # Release - the same artefacts the Obsidian Community Plugins store
 # expects to download from the GitHub release.
+#
+# The Release is published under the BARE version tag (e.g. 1.1.0), not
+# the pushed v-prefixed tag. Obsidian matches manifest.json "version"
+# against a release tag with no "v" prefix, so the release must be 1.1.0
+# even though the git trigger tag is v1.1.0.
 
 on:
     push:
@@ -66,7 +71,7 @@ jobs:
             - name: Publish GitHub Release
               uses: softprops/action-gh-release@v2
               with:
-                  tag_name: ${{ github.ref_name }}
+                  tag_name: ${{ steps.version.outputs.version }}
                   name: Unabyss Obsidian Plugin ${{ steps.version.outputs.version }}
                   draft: false
                   prerelease: false

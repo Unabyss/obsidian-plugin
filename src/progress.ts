@@ -132,3 +132,18 @@ export class ProgressTracker {
         }
     }
 }
+
+/**
+ * Render a progress snapshot as a short single-line status string,
+ * shared by the settings tab and the sidebar panel.
+ */
+export function formatProgress(snapshot: ProgressSnapshot): string {
+    const head = `${snapshot.label}`;
+    if (snapshot.phase === "running" && snapshot.total > 0) {
+        return `${head} (${snapshot.done}/${snapshot.total})`;
+    }
+    if (snapshot.phase === "error" && snapshot.error) {
+        return `${head} - ${snapshot.error}`;
+    }
+    return head;
+}

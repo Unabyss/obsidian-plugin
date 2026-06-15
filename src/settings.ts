@@ -29,8 +29,9 @@ import {
 } from "obsidian";
 import type UnabyssPlugin from "./main";
 import { DEFAULT_EXPORT_FOLDER } from "./types";
-import { ProgressSnapshot } from "./progress";
+import { ProgressSnapshot, formatProgress } from "./progress";
 import { ExportDeleteBehaviour } from "./types";
+import { renderUnabyssLogo } from "./logo";
 
 type SubscriptionDisposer = () => void;
 
@@ -61,42 +62,8 @@ export class UnabyssSettingTab extends PluginSettingTab {
 
     private renderHeader(containerEl: HTMLElement): void {
         const header = containerEl.createDiv({ cls: "unabyss-settings-header" });
-        this.renderLogo(header);
+        renderUnabyssLogo(header);
         header.createDiv({ cls: "unabyss-settings-title", text: "Unabyss" });
-    }
-
-    /**
-     * Renders the Unabyss mark as inline SVG that inherits the current
-     * theme text colour, so the plugin ships no extra image assets and
-     * adapts to light/dark automatically.
-     */
-    private renderLogo(parent: HTMLElement): void {
-        const dotOpacities = [
-            0.28, 0.26, 0.89, 0.65,
-            0.56, 0.7, 0.88, 0.69,
-            0.57, 0.26, 0.62, 0.5,
-            0.74, 0.08, 0.13, 0.98,
-        ];
-        const coords = [4, 12, 20, 28];
-        const svg = parent.createSvg("svg", {
-            cls: "unabyss-settings-logo",
-            attr: { viewBox: "0 0 32 32", width: 32, height: 32 },
-        });
-        let index = 0;
-        for (const cy of coords) {
-            for (const cx of coords) {
-                svg.createSvg("circle", {
-                    attr: {
-                        cx,
-                        cy,
-                        r: 3,
-                        fill: "currentColor",
-                        "fill-opacity": dotOpacities[index],
-                    },
-                });
-                index++;
-            }
-        }
     }
 
     private renderApiBaseUrl(containerEl: HTMLElement): void {
@@ -242,7 +209,8 @@ export class UnabyssSettingTab extends PluginSettingTab {
                 }),
             );
 
-        new Setting(containerEl)
+        const includeFolders = containerEl.createDiv({ cls: "unabyss-include-folders" });
+        new Setting(includeFolders)
             .setName("Include folders")
             .setDesc(
                 "Vault-relative folder paths to sync. Leave empty to sync the whole vault. " +
@@ -262,12 +230,11 @@ export class UnabyssSettingTab extends PluginSettingTab {
                 }),
             );
 
-        this.renderFolderChipList(containerEl, this.plugin.settings.includeFolders, async (next) => {
+        this.renderFolderChipList(includeFolders, this.plugin.settings.includeFolders, async (next) => {
             this.plugin.settings.includeFolders = next;
             await this.plugin.saveSettings();
             this.display();
         });
-
     }
 
     private renderInboundSection(containerEl: HTMLElement): void {
@@ -362,7 +329,12 @@ export class UnabyssSettingTab extends PluginSettingTab {
         if (folders.length === 0) {
             return;
         }
-        const chipsRow = containerEl.createDiv({ cls: "unabyss-folder-chip-row" });
+        const subContainer = containerEl.createDiv({ cls: "unabyss-folder-chip-subcontainer" });
+        subContainer.createDiv({
+            cls: "unabyss-folder-chip-subcontainer-title",
+            text: "Selected folders",
+        });
+        const chipsRow = subContainer.createDiv({ cls: "unabyss-folder-chip-row" });
         for (const folder of folders) {
             const chip = chipsRow.createDiv({ cls: "unabyss-folder-chip" });
             chip.createSpan({ text: folder });
@@ -399,17 +371,6 @@ export class UnabyssSettingTab extends PluginSettingTab {
         }
         this.disposers.length = 0;
     }
-}
-
-function formatProgress(snapshot: ProgressSnapshot): string {
-    const head = `${snapshot.label}`;
-    if (snapshot.phase === "running" && snapshot.total > 0) {
-        return `${head} (${snapshot.done}/${snapshot.total})`;
-    }
-    if (snapshot.phase === "error" && snapshot.error) {
-        return `${head} - ${snapshot.error}`;
-    }
-    return head;
 }
 
 function describeError(err: unknown): string {

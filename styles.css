@@ -5,11 +5,23 @@
     margin-bottom: 18px;
 }
 
-.unabyss-settings-logo {
-    width: 32px;
-    height: 32px;
+.unabyss-logo {
     flex-shrink: 0;
-    color: var(--text-normal);
+    --unabyss-logo-bg: #181817;
+    --unabyss-logo-dot: #ffffff;
+}
+
+.theme-light .unabyss-logo {
+    --unabyss-logo-bg: #ffffff;
+    --unabyss-logo-dot: #181817;
+}
+
+.unabyss-logo .unabyss-logo-tile {
+    fill: var(--unabyss-logo-bg);
+}
+
+.unabyss-logo .unabyss-logo-dot {
+    fill: var(--unabyss-logo-dot);
 }
 
 .unabyss-settings-title {
@@ -33,11 +45,28 @@
     margin-top: 10px;
 }
 
+.unabyss-include-folders {
+    margin-bottom: 18px;
+}
+
+.unabyss-folder-chip-subcontainer {
+    margin: 4px 0 0 0;
+    padding: 10px 12px;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 8px;
+    background: var(--background-secondary);
+}
+
+.unabyss-folder-chip-subcontainer-title {
+    font-size: var(--font-ui-smaller);
+    color: var(--text-muted);
+    margin-bottom: 8px;
+}
+
 .unabyss-folder-chip-row {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
-    margin-bottom: 12px;
 }
 
 .unabyss-folder-chip {
@@ -53,4 +82,50 @@
     background: transparent;
     border: none;
     cursor: pointer;
+}
+
+.unabyss-sidebar {
+    padding: 12px 14px;
+}
+
+.unabyss-sidebar-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+.unabyss-sidebar-title {
+    font-size: var(--font-ui-large);
+    font-weight: var(--font-bold);
+}
+
+.unabyss-sidebar-status {
+    margin-bottom: 14px;
+}
+
+.unabyss-sidebar-status-line {
+    font-size: var(--font-ui-small);
+    color: var(--text-normal);
+}
+
+.unabyss-sidebar-progress {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 10px 12px;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 8px;
+    background: var(--background-secondary);
+}
+
+.unabyss-sidebar-progress-line {
+    font-size: var(--font-ui-small);
+    color: var(--text-muted);
+}
+
+.unabyss-sidebar-hint {
+    margin-top: 14px;
+    font-size: var(--font-ui-smaller);
+    color: var(--text-muted);
 }

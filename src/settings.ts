@@ -169,7 +169,7 @@ export class UnabyssSettingTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName("Sync now (both directions)")
-            .setDesc("Run both enabled directions concurrently, same as the hourly timer fires.")
+            .setDesc("Run both enabled directions concurrently, same as the daily safety-net timer fires.")
             .addButton((btn) =>
                 btn
                     .setCta()
@@ -197,7 +197,7 @@ export class UnabyssSettingTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName("Sync outbound")
             .setDesc(
-                "When off, neither file-change events, the hourly timer, nor the manual button " +
+                "When off, neither file-change events, the daily safety-net timer, nor the manual button " +
                     "send notes to Unabyss.",
             )
             .addToggle((toggle) =>
@@ -243,7 +243,7 @@ export class UnabyssSettingTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName("Sync inbound")
             .setDesc(
-                "When off, exports are not written back into the vault and the hourly timer " +
+                "When off, exports are not written back into the vault and the daily safety-net timer " +
                     "skips this direction.",
             )
             .addToggle((toggle) =>

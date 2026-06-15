@@ -4,8 +4,8 @@ Two-way OAuth sync between your Obsidian vault and your Unabyss memory.
 
 - Push your notes into Unabyss as incremental, change-aware deltas.
 - Pull Unabyss-generated exports back into a folder you pick inside the vault.
-- File-change-driven outbound sync with a 5-second debounce, plus an
-  hourly safety-net timer that runs both directions regardless of
+- File-change-driven outbound sync with a 5-second debounce, plus a
+  daily safety-net timer that runs both directions regardless of
   events.
 
 ## Features
@@ -69,9 +69,9 @@ Open Settings -> Community plugins -> Unabyss.
 |------------------------------------------|---------------------------|-------|
 | API base URL                             | `https://api.unabyss.com` | Set to your self-hosted backend if applicable. The plugin opens `https://app.<host>` in your browser for the consent page; point at the API host you have if your deploy doesn't follow the `api.` / `app.` convention. |
 | Account                                  | (empty until you connect) | Click **Connect** to start the OAuth PKCE flow. |
-| Sync outbound                            | on                        | Master switch for the Obsidian -> Unabyss direction. When off, neither file-change events, the hourly timer, nor the manual button sends notes to Unabyss. |
+| Sync outbound                            | on                        | Master switch for the Obsidian -> Unabyss direction. When off, neither file-change events, the daily safety-net timer, nor the manual button sends notes to Unabyss. |
 | Include folders                          | (empty = whole vault)     | Vault folders included by outbound sync. Click **Add folder** to pick from a list of every folder in the vault. Empty = sync everything. |
-| Sync inbound                             | on                        | Master switch for the Unabyss -> Obsidian direction. When off, the hourly timer skips inbound and the manual button refuses to run it. |
+| Sync inbound                             | on                        | Master switch for the Unabyss -> Obsidian direction. When off, the daily safety-net timer skips inbound and the manual button refuses to run it. |
 | Export target folder                     | (empty)                   | Vault folder where Unabyss exports are written. Inbound sync requires this to be set. Auto-completes vault folders as you type. |
 | When an export is deleted in Unabyss     | Leave the local file alone | Choose between **Leave**, **Delete (system trash)**, and **Move to a `Deleted/` subfolder** inside your target folder. |
 | Force full resync                        | -                         | Wipes the local manifest cache + inbound watermark and immediately runs an outbound sync so the server's hash-diff guard re-establishes the truth. |
@@ -95,7 +95,7 @@ toolbar, or via **Settings -> Community plugins -> Unabyss**.
   debounced outbound sync after **5 seconds** of quiet.
 - Manual: **Settings -> Unabyss -> Sync now** (or the
   command palette: `Unabyss: Sync outbound now`).
-- The hourly safety-net timer fires both directions regardless of
+- The daily safety-net timer fires both directions regardless of
   file events, so the plugin recovers from missed events and external
   file-system writes.
 

@@ -13,7 +13,7 @@
  *  - File-change driven outbound sync with a 5s debounce window
  *    (per ``OUTBOUND_DEBOUNCE_MS``). The handler walks every modify /
  *    create / delete on ``.md`` files inside the user's include scope.
- *  - Hourly safety-net timer (per ``SAFETY_NET_INTERVAL_MS``) that
+ *  - Daily safety-net timer (per ``SAFETY_NET_INTERVAL_MS``) that
  *    runs both directions regardless of file events.
  *  - Per-direction enable/disable toggles - when off, neither timer
  *    nor command engages that direction.
@@ -289,7 +289,7 @@ export default class UnabyssPlugin extends Plugin {
 
         if (outbound) {
             new Notice(
-                `Outbound \u2014 ${outbound.uploaded} uploaded, ${outbound.deleted} deleted, ${outbound.restored} restored; embedding in Unabyss.`,
+                `Outbound \u2014 ${outbound.uploaded} uploaded, ${outbound.deleted} deleted, ${outbound.restored} restored; processing started in Unabyss.`,
             );
         }
         if (inbound) {
@@ -327,7 +327,7 @@ export default class UnabyssPlugin extends Plugin {
                 progress: this.outboundProgress,
             });
             this.outboundProgress.succeed(
-                `Outbound accepted - ${report.uploaded} uploaded, ${report.deleted} deleted; embedding in Unabyss.`,
+                `Outbound accepted - ${report.uploaded} uploaded, ${report.deleted} deleted; processing started in Unabyss.`,
             );
             this.settings.bannerDismissed = true;
             await this.savePluginData();

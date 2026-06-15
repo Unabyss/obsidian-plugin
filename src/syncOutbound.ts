@@ -104,7 +104,7 @@ export async function runOutboundSync(deps: OutboundSyncDeps): Promise<SyncOutbo
         hashes: allHashes,
         vault_display_name: deps.vaultDisplayName || undefined,
     });
-    deps.progress?.report({ label: "Sync accepted - embedding in Unabyss" });
+    deps.progress?.report({ label: "Sync accepted - processing started in Unabyss" });
     return {
         scanned: scanned.length,
         skippedOversize,

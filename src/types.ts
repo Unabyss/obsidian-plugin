@@ -58,7 +58,7 @@ export const OUTBOUND_DEBOUNCE_MS = 5_000;
  * Safety-net timer cadence. Runs both directions regardless of file
  * events so the plugin recovers from missed events / external writes.
  */
-export const SAFETY_NET_INTERVAL_MS = 60 * 60 * 1_000;
+export const SAFETY_NET_INTERVAL_MS = 24 * 60 * 60 * 1_000;
 
 /** Default inbound export folder when the user has not picked one yet. */
 export const DEFAULT_EXPORT_FOLDER = "Unabyss Exports";

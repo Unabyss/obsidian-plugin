@@ -61,29 +61,42 @@ export class UnabyssSettingTab extends PluginSettingTab {
 
     private renderHeader(containerEl: HTMLElement): void {
         const header = containerEl.createDiv({ cls: "unabyss-settings-header" });
-        header.style.display = "flex";
-        header.style.alignItems = "center";
-        header.style.gap = "10px";
-        header.style.marginBottom = "18px";
-
-        const logo = header.createEl("img", { cls: "unabyss-settings-logo" });
-        logo.alt = "Unabyss";
-        logo.src = this.pluginLogoResourcePath();
-        logo.style.width = "32px";
-        logo.style.height = "32px";
-        logo.style.flexShrink = "0";
-
-        const title = header.createEl("h2", { text: "Unabyss" });
-        title.style.margin = "0";
+        this.renderLogo(header);
+        header.createDiv({ cls: "unabyss-settings-title", text: "Unabyss" });
     }
 
-    private pluginLogoResourcePath(): string {
-        const logoFile = document.body.classList.contains("theme-dark")
-            ? "logo-dark.svg"
-            : "logo-light.svg";
-        return this.app.vault.adapter.getResourcePath(
-            `.obsidian/plugins/${this.plugin.manifest.id}/${logoFile}`,
-        );
+    /**
+     * Renders the Unabyss mark as inline SVG that inherits the current
+     * theme text colour, so the plugin ships no extra image assets and
+     * adapts to light/dark automatically.
+     */
+    private renderLogo(parent: HTMLElement): void {
+        const dotOpacities = [
+            0.28, 0.26, 0.89, 0.65,
+            0.56, 0.7, 0.88, 0.69,
+            0.57, 0.26, 0.62, 0.5,
+            0.74, 0.08, 0.13, 0.98,
+        ];
+        const coords = [4, 12, 20, 28];
+        const svg = parent.createSvg("svg", {
+            cls: "unabyss-settings-logo",
+            attr: { viewBox: "0 0 32 32", width: 32, height: 32 },
+        });
+        let index = 0;
+        for (const cy of coords) {
+            for (const cx of coords) {
+                svg.createSvg("circle", {
+                    attr: {
+                        cx,
+                        cy,
+                        r: 3,
+                        fill: "currentColor",
+                        "fill-opacity": dotOpacities[index],
+                    },
+                });
+                index++;
+            }
+        }
     }
 
     private renderApiBaseUrl(containerEl: HTMLElement): void {
@@ -111,11 +124,6 @@ export class UnabyssSettingTab extends PluginSettingTab {
         }
         const auth = this.plugin.settings.auth;
         const banner = containerEl.createDiv({ cls: "unabyss-connection-banner" });
-        banner.style.marginBottom = "16px";
-        banner.style.padding = "12px 14px";
-        banner.style.borderRadius = "8px";
-        banner.style.border = "1px solid var(--background-modifier-border)";
-        banner.style.background = "var(--background-secondary)";
 
         banner.createEl("p", {
             text:
@@ -128,11 +136,7 @@ export class UnabyssSettingTab extends PluginSettingTab {
             cls: "setting-item-description",
         });
 
-        const actions = banner.createDiv();
-        actions.style.display = "flex";
-        actions.style.flexWrap = "wrap";
-        actions.style.gap = "8px";
-        actions.style.marginTop = "10px";
+        const actions = banner.createDiv({ cls: "unabyss-connection-banner-actions" });
 
         const syncBtn = actions.createEl("button", { text: "Sync now" });
         syncBtn.classList.add("mod-cta");
@@ -221,7 +225,7 @@ export class UnabyssSettingTab extends PluginSettingTab {
     }
 
     private renderOutboundSection(containerEl: HTMLElement): void {
-        containerEl.createEl("h3", { text: "Obsidian \u2192 Unabyss (outbound)" });
+        new Setting(containerEl).setName("Obsidian \u2192 Unabyss (outbound)").setHeading();
 
         new Setting(containerEl)
             .setName("Sync outbound")
@@ -267,7 +271,7 @@ export class UnabyssSettingTab extends PluginSettingTab {
     }
 
     private renderInboundSection(containerEl: HTMLElement): void {
-        containerEl.createEl("h3", { text: "Unabyss \u2192 Obsidian (inbound)" });
+        new Setting(containerEl).setName("Unabyss \u2192 Obsidian (inbound)").setHeading();
 
         new Setting(containerEl)
             .setName("Sync inbound")
@@ -322,7 +326,7 @@ export class UnabyssSettingTab extends PluginSettingTab {
     }
 
     private renderAdvancedSection(containerEl: HTMLElement): void {
-        containerEl.createEl("h3", { text: "Advanced" });
+        new Setting(containerEl).setName("Advanced").setHeading();
         this.renderApiBaseUrl(containerEl);
         new Setting(containerEl)
             .setName("Force full resync")
@@ -359,26 +363,16 @@ export class UnabyssSettingTab extends PluginSettingTab {
             return;
         }
         const chipsRow = containerEl.createDiv({ cls: "unabyss-folder-chip-row" });
-        chipsRow.style.display = "flex";
-        chipsRow.style.flexWrap = "wrap";
-        chipsRow.style.gap = "8px";
-        chipsRow.style.marginBottom = "12px";
         for (const folder of folders) {
             const chip = chipsRow.createDiv({ cls: "unabyss-folder-chip" });
-            chip.style.padding = "4px 8px";
-            chip.style.border = "1px solid var(--background-modifier-border)";
-            chip.style.borderRadius = "4px";
-            chip.style.display = "flex";
-            chip.style.alignItems = "center";
-            chip.style.gap = "6px";
             chip.createSpan({ text: folder });
-            const remove = chip.createEl("button", { text: "x" });
-            remove.style.background = "transparent";
-            remove.style.border = "none";
-            remove.style.cursor = "pointer";
-            remove.addEventListener("click", async () => {
+            const remove = chip.createEl("button", {
+                text: "x",
+                cls: "unabyss-folder-chip-remove",
+            });
+            remove.addEventListener("click", () => {
                 const next = folders.filter((entry) => entry !== folder);
-                await save(next);
+                void save(next);
             });
         }
     }

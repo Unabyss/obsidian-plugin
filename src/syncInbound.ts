@@ -205,7 +205,7 @@ async function applyDeletion(
         };
     }
     if (deps.deleteBehaviour === "delete") {
-        await deps.app.vault.trash(existing, true);
+        await deps.app.fileManager.trashFile(existing);
         return {
             exportId: row.id,
             title: row.title,

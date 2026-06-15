@@ -1,0 +1,56 @@
+.unabyss-settings-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 18px;
+}
+
+.unabyss-settings-logo {
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+    color: var(--text-normal);
+}
+
+.unabyss-settings-title {
+    margin: 0;
+    font-size: var(--font-ui-large);
+    font-weight: var(--font-bold);
+}
+
+.unabyss-connection-banner {
+    margin-bottom: 16px;
+    padding: 12px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--background-modifier-border);
+    background: var(--background-secondary);
+}
+
+.unabyss-connection-banner-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.unabyss-folder-chip-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.unabyss-folder-chip {
+    padding: 4px 8px;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.unabyss-folder-chip-remove {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+}

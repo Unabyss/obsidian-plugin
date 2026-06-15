@@ -232,14 +232,14 @@ export default class UnabyssPlugin extends Plugin {
             this.settings.outboundEnabled
                 ? this.runOutboundSync(true)
                       .then((report) => ({ ok: true as const, report }))
-                      .catch((err) => ({ ok: false as const, err }))
+                      .catch((err: unknown) => ({ ok: false as const, err }))
                 : Promise.resolve(null);
 
         const inboundP: Promise<DirectionOutcome<SyncInboundReport> | null> =
             this.settings.inboundEnabled
                 ? this.runInboundSync(true)
                       .then((report) => ({ ok: true as const, report }))
-                      .catch((err) => ({ ok: false as const, err }))
+                      .catch((err: unknown) => ({ ok: false as const, err }))
                 : Promise.resolve(null);
 
         const [outboundSettled, inboundSettled] = await Promise.allSettled([outboundP, inboundP]);

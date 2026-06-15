@@ -51,8 +51,8 @@ Two-way OAuth sync between your Obsidian vault and your Unabyss memory.
    pnpm build
    ```
 
-3. Copy `main.js`, `manifest.json`, `logo-dark.svg`, and
-   `logo-light.svg` into `<vault>/.obsidian/plugins/unabyss/`
+3. Copy `main.js`, `manifest.json`, and `styles.css` into
+   `<vault>/.obsidian/plugins/unabyss/`
    (create the folder if it doesn't exist).
 4. Enable the plugin in Settings -> Community plugins.
 

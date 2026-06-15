@@ -151,7 +151,7 @@ export class UnabyssApiClient {
         }
         try {
             await this.refreshTokens();
-        } catch (err) {
+        } catch {
             await this.clearAuth("refresh_failed");
             throw new AuthExpiredError();
         }

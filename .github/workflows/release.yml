@@ -1,9 +1,9 @@
 name: Release Obsidian Plugin
 
 # Triggered by pushing a SemVer tag (v*). Builds the production bundle
-# and attaches main.js, manifest.json, and logo SVGs to the GitHub
-# Release - the same artefacts the Obsidian Community Plugins store
-# expects to download from the GitHub release.
+# and attaches only the files Obsidian downloads - main.js, manifest.json,
+# and styles.css - to the GitHub Release. Obsidian ignores any other
+# release assets, so none are attached.
 #
 # The Release is published under the BARE version tag (e.g. 1.1.0), not
 # the pushed v-prefixed tag. Obsidian matches manifest.json "version"
@@ -17,6 +17,8 @@ on:
 
 permissions:
     contents: write
+    id-token: write
+    attestations: write
 
 jobs:
     build-and-release:
@@ -65,8 +67,15 @@ jobs:
             - name: Collect release artefacts
               run: |
                   mkdir -p release
-                  cp main.js manifest.json logo-dark.svg logo-light.svg release/
+                  cp main.js manifest.json release/
                   if [ -f styles.css ]; then cp styles.css release/; fi
+
+            - name: Attest build provenance
+              uses: actions/attest-build-provenance@v2
+              with:
+                  subject-path: |
+                      release/main.js
+                      release/manifest.json
 
             - name: Publish GitHub Release
               uses: softprops/action-gh-release@v2
@@ -78,8 +87,6 @@ jobs:
                   files: |
                       release/main.js
                       release/manifest.json
-                      release/logo-dark.svg
-                      release/logo-light.svg
                       release/styles.css
                   fail_on_unmatched_files: false
               env:

@@ -134,8 +134,8 @@ export class ProgressTracker {
 }
 
 /**
- * Render a progress snapshot as a short single-line status string,
- * shared by the settings tab and the sidebar panel.
+ * Render a progress snapshot as a short single-line status string for
+ * the settings tab.
  */
 export function formatProgress(snapshot: ProgressSnapshot): string {
     const head = `${snapshot.label}`;

@@ -23,10 +23,9 @@
  * protocol-handler registration auto-removed by Obsidian).
  */
 
-import { Notice, Plugin, TAbstractFile, TFile, WorkspaceLeaf, addIcon, normalizePath } from "obsidian";
+import { Notice, Plugin, TAbstractFile, TFile, addIcon, normalizePath } from "obsidian";
 import { UnabyssApiClient } from "./apiClient";
 import { UNABYSS_ICON_ID, UNABYSS_ICON_SVG } from "./logo";
-import { UNABYSS_VIEW_TYPE, UnabyssSidebarView } from "./sidebarView";
 import { EMPTY_MANIFEST_CACHE, ManifestCache, normalizeManifestCacheData } from "./manifestCache";
 import { OAuthClient, revokeTokens } from "./oauth";
 import { ProgressTracker } from "./progress";
@@ -91,7 +90,9 @@ export default class UnabyssPlugin extends Plugin {
         this.rebuildApiClient();
 
         addIcon(UNABYSS_ICON_ID, UNABYSS_ICON_SVG);
-        this.registerView(UNABYSS_VIEW_TYPE, (leaf) => new UnabyssSidebarView(leaf, this));
+        this.addRibbonIcon(UNABYSS_ICON_ID, "Unabyss", () => {
+            this.openPluginSettings();
+        });
 
         this.registerObsidianProtocolHandler(OAUTH_PROTOCOL_ACTION, async (params) => {
             await this.handleOAuthCallback(params);
@@ -151,52 +152,25 @@ export default class UnabyssPlugin extends Plugin {
             },
         });
 
-        this.addCommand({
-            id: "open-sidebar",
-            name: "Open Unabyss panel",
-            callback: () => {
-                void this.activateSidebar(true);
-            },
-        });
-
         this.settingTab = new UnabyssSettingTab(this.app, this);
         this.addSettingTab(this.settingTab);
 
         this.registerVaultWatcher();
         this.installSafetyNetTimer();
-
-        this.app.workspace.onLayoutReady(() => {
-            void this.activateSidebar(false);
-        });
     }
 
-    /**
-     * Ensure the Unabyss side panel exists in the right sidebar. When
-     * ``reveal`` is true (command palette / ribbon-style entry) the leaf
-     * is brought to the front; on layout-ready load we create it without
-     * stealing focus.
-     */
-    async activateSidebar(reveal = true): Promise<void> {
-        const { workspace } = this.app;
-        let leaf: WorkspaceLeaf | null = workspace.getLeavesOfType(UNABYSS_VIEW_TYPE)[0] ?? null;
-        if (!leaf) {
-            leaf = workspace.getRightLeaf(false);
-            if (leaf) {
-                await leaf.setViewState({ type: UNABYSS_VIEW_TYPE, active: false });
+    /** Open Obsidian settings directly to the Unabyss plugin tab. */
+    private openPluginSettings(): void {
+        const setting = (
+            this.app as unknown as {
+                setting?: { open: () => void; openTabById: (id: string) => void };
             }
+        ).setting;
+        if (!setting) {
+            return;
         }
-        if (leaf && reveal) {
-            workspace.revealLeaf(leaf);
-        }
-    }
-
-    private refreshSidebar(): void {
-        for (const leaf of this.app.workspace.getLeavesOfType(UNABYSS_VIEW_TYPE)) {
-            const view = leaf.view;
-            if (view instanceof UnabyssSidebarView) {
-                view.refreshStatus();
-            }
-        }
+        setting.open();
+        setting.openTabById(this.manifest.id);
     }
 
     onunload(): void {
@@ -558,7 +532,6 @@ export default class UnabyssPlugin extends Plugin {
 
     private refreshSettingsTab(): void {
         this.settingTab?.display();
-        this.refreshSidebar();
     }
 
     private async handleOAuthCallback(params: Record<string, string>): Promise<void> {

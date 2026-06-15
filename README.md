@@ -21,6 +21,7 @@ Two-way OAuth sync between your Obsidian vault and your Unabyss memory.
 - Per-direction enable / disable toggles - either direction can be
   turned off without uninstalling the plugin.
 - Per-direction live progress indicator inside the settings tab.
+- Ribbon icon in the left toolbar that opens the Unabyss settings tab.
 - Force-full-resync button that wipes the local hash cache + inbound
   watermark and re-checks every file with the server.
 - Per-note 1 MiB size cap (oversize notes are skipped with a notice).
@@ -53,8 +54,12 @@ Two-way OAuth sync between your Obsidian vault and your Unabyss memory.
 
 3. Copy `main.js`, `manifest.json`, and `styles.css` into
    `<vault>/.obsidian/plugins/unabyss/`
-   (create the folder if it doesn't exist).
+   (create the folder if it doesn't exist). `manifest.json` and
+   `styles.css` live in the repository root; `pnpm build` produces
+   `main.js`.
 4. Enable the plugin in Settings -> Community plugins.
+5. A Unabyss icon appears in the left ribbon - click it to open the
+   plugin settings.
 
 ## Configuration
 
@@ -72,6 +77,9 @@ Open Settings -> Community plugins -> Unabyss.
 | Force full resync                        | -                         | Wipes the local manifest cache + inbound watermark and immediately runs an outbound sync so the server's hash-diff guard re-establishes the truth. |
 
 ## Usage
+
+Open the Unabyss settings any time from the **ribbon icon** in the left
+toolbar, or via **Settings -> Community plugins -> Unabyss**.
 
 ### First connect
 
@@ -165,6 +173,22 @@ pnpm run typecheck  # tsc -noEmit
 pnpm test           # jest unit suite
 pnpm run build      # production bundle
 ```
+
+### Local testing in a vault
+
+Symlink the repository into your vault's plugins folder so `pnpm run dev`
+rebuilds the plugin in place:
+
+```bash
+ln -s "$(pwd)" "<vault>/.obsidian/plugins/unabyss"
+```
+
+`manifest.json` and `styles.css` already sit in the repo root and
+`pnpm run dev` keeps `main.js` current, so the symlinked folder always
+has the three files Obsidian loads (the extra source / `node_modules`
+files are ignored). Enable **Unabyss** in Settings -> Community plugins,
+then reload Obsidian (or toggle the plugin off/on) after each build to
+pick up changes.
 
 The unit suite covers:
 

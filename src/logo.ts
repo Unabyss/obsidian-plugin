@@ -9,7 +9,7 @@
  *    and dot colours come from CSS custom properties so the mark adapts
  *    to the active light / dark theme.
  *  - {@link UNABYSS_ICON_SVG} is a monochrome (currentColor) variant
- *    registered via Obsidian's ``addIcon`` for the sidebar view tab.
+ *    registered via Obsidian's ``addIcon`` for the ribbon icon.
  */
 
 /** Per-dot opacity grid (row-major, 4x4) taken from the brand logo-1. */

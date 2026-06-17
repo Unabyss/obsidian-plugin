@@ -142,15 +142,15 @@ describe("runInboundSync watermark advancement", () => {
         expect(report.written).toEqual(3);
         expect(cache.getExportsWatermark()).toEqual("2026-01-03T00:00:00Z");
         expect(vault.createCalls.map((row) => row.path)).toEqual([
-            "Exports/note-a.md",
-            "Exports/note-b.md",
-            "Exports/note-c.md",
+            "Exports/Note A.md",
+            "Exports/Note B.md",
+            "Exports/Note C.md",
         ]);
     });
 
     it("does NOT advance the watermark when a row inside the page errors", async () => {
         const vault = new FakeVault(["Exports"]);
-        vault.failOnCreate = /note-b\.md$/u;
+        vault.failOnCreate = /Note B\.md$/u;
         const app = setupApp(vault);
         const { cache } = setupCache();
 

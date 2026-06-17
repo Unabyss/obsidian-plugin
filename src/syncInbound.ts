@@ -4,9 +4,11 @@
  * Polls ``GET /api/exports/changed-since/?updated_after=<watermark>``,
  * paginates through the response set, and writes each row into the
  * user-configured ``exportTargetFolder`` as
- * ``<slugify(title)>.md``. The bottom of every written file carries a
+ * ``<filenameFromTitle(title)>.md`` - the export title with illegal
+ * filename characters rewritten and the name capped at 70 characters
+ * on a whole-word boundary. The bottom of every written file carries a
  * stable trailer line ``<!-- unabyss-export-id: <uuid> -->`` so the
- * next sync can recognise a same-slug existing file as the same export
+ * next sync can recognise a same-name existing file as the same export
  * (idempotent overwrite) versus an unrelated user-authored note
  * (suffix-on-write with ``-<first-6-of-uuid>``).
  *
@@ -153,8 +155,8 @@ async function applyUpsert(
     targetFolder: string,
     row: ExportRow,
 ): Promise<InboundFileOutcome> {
-    const baseSlug = slugifyTitle(row.title) || "untitled";
-    const primaryPath = joinPath(targetFolder, `${baseSlug}.md`);
+    const baseName = filenameFromTitle(row.title) || "untitled";
+    const primaryPath = joinPath(targetFolder, `${baseName}.md`);
     const ownPath = await locateOwnedExport(deps.app.vault, targetFolder, row.id);
     const targetPath = ownPath ?? (await resolveCollisionPath(deps.app.vault, primaryPath, row.id));
     const body = appendTrailer(row.markdown, row.id);
@@ -290,22 +292,40 @@ export function trailerLineFor(exportId: string): string {
     return `${EXPORT_TRAILER_PREFIX} ${exportId} ${EXPORT_TRAILER_SUFFIX}`;
 }
 
+const FILENAME_MAX_LENGTH = 70;
+
 /**
- * Slugify an export title for use as a filename.
+ * Derive a human-readable filename body from an export title.
  *
- * Rules (kept simple to avoid pulling in a runtime dependency):
+ * Rules:
  *
- *  - Lowercase ASCII alphanumerics and dashes.
- *  - Non-ASCII letters and punctuation collapse to dashes.
- *  - Repeated dashes collapse to one; leading / trailing dashes drop.
- *  - Truncate to 80 characters so the final ``<slug>-<suffix>.md`` path
- *    fits comfortably inside Obsidian's ``normalizePath`` limit.
+ *  - Preserve the title's casing and spacing as far as the filesystem
+ *    allows; only characters Obsidian / the host OS forbid in note
+ *    names are rewritten.
+ *  - Characters illegal in vault filenames
+ *    (``\ / : * ? " < > | # ^ [ ]``) collapse to a single space.
+ *  - Whitespace runs collapse to one space; leading / trailing spaces
+ *    and dots are dropped (a leading dot would otherwise hide the
+ *    file; a trailing dot is rejected on Windows).
+ *  - Truncate to ``FILENAME_MAX_LENGTH`` characters. When the title is
+ *    longer, the cut falls back to the last whole word so a word is
+ *    never split mid-way (unless the first word alone already exceeds
+ *    the limit, in which case it is hard-cut).
  */
-export function slugifyTitle(title: string): string {
-    const lowered = title.toLowerCase();
-    const stripped = lowered.replace(/[^a-z0-9]+/gu, "-");
-    const collapsed = stripped.replace(/-+/gu, "-").replace(/^-|-$/gu, "");
-    return collapsed.slice(0, 80);
+export function filenameFromTitle(title: string): string {
+    const cleaned = title.replace(/[\\/:*?"<>|#^[\]]/gu, " ");
+    const normalized = cleaned.replace(/\s+/gu, " ").trim();
+    const truncated = truncateAtWord(normalized, FILENAME_MAX_LENGTH);
+    return truncated.replace(/^[.\s]+|[.\s]+$/gu, "");
+}
+
+function truncateAtWord(text: string, maxLength: number): string {
+    if (text.length <= maxLength) {
+        return text;
+    }
+    const hardCut = text.slice(0, maxLength);
+    const lastSpace = hardCut.lastIndexOf(" ");
+    return lastSpace > 0 ? hardCut.slice(0, lastSpace) : hardCut;
 }
 
 /**

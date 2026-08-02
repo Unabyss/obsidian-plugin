@@ -25,6 +25,9 @@ Two-way OAuth sync between your Obsidian vault and your Unabyss memory.
 - Force-full-resync button that wipes the local hash cache + inbound
   watermark and re-checks every file with the server.
 - Per-note 1 MiB size cap (oversize notes are skipped with a notice).
+- Empty and whitespace-only notes are skipped client-side (the upload
+  API rejects blank bodies; skipping them keeps the rest of the batch
+  syncing).
 - Local hash + mtime cache to skip re-hashing unchanged files.
 
 ## Installation

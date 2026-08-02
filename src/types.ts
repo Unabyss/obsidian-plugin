@@ -226,6 +226,8 @@ export interface UserMeResponse {
 export interface SyncOutboundReport {
     scanned: number;
     skippedOversize: number;
+    /** Empty / whitespace-only notes; the upload API rejects blank bodies. */
+    skippedEmpty: number;
     uploaded: number;
     rejected: NoteUploadRejection[];
     deleted: number;

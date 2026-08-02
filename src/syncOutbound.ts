@@ -9,7 +9,9 @@
  *   2. Apply the user's include-folder filter (empty list = whole vault).
  *   3. Hash each in-scope file with SHA-256 (matching the server's
  *      ``compute_hash(raw_bytes)``). Skip oversize files
- *      (> ``MAX_NOTE_BYTES``).
+ *      (> ``MAX_NOTE_BYTES``) and empty / whitespace-only notes (the
+ *      upload API rejects blank ``content``, and a single blank row
+ *      currently fails the whole batch).
  *   4. Persist the computed hashes back into the local manifest cache.
  *   5. Chunk the hash set into ``MANIFEST_MAX_HASHES_PER_CHUNK`` batches
  *      and POST each to ``manifest-chunks/``.
@@ -68,16 +70,21 @@ export async function runOutboundSync(deps: OutboundSyncDeps): Promise<SyncOutbo
 
     const scanned: ScannedNote[] = [];
     let skippedOversize = 0;
+    let skippedEmpty = 0;
     let scannedCount = 0;
     for (const file of inScope) {
-        const note = await scanNote(deps.app, deps.cache, file);
+        const result = await scanNote(deps.app, deps.cache, file);
         scannedCount += 1;
         deps.progress?.report({ done: scannedCount });
-        if (note === null) {
-            skippedOversize += 1;
+        if (result.status === "skip") {
+            if (result.reason === "empty") {
+                skippedEmpty += 1;
+            } else {
+                skippedOversize += 1;
+            }
             continue;
         }
-        scanned.push(note);
+        scanned.push(result.note);
     }
 
     deps.cache.retainOnly(scanned.map((row) => row.path));
@@ -108,6 +115,7 @@ export async function runOutboundSync(deps: OutboundSyncDeps): Promise<SyncOutbo
     return {
         scanned: scanned.length,
         skippedOversize,
+        skippedEmpty,
         uploaded: uploadOutcome.uploaded,
         rejected: uploadOutcome.rejected,
         deleted: finalize.deleted,
@@ -115,36 +123,57 @@ export async function runOutboundSync(deps: OutboundSyncDeps): Promise<SyncOutbo
     };
 }
 
-async function scanNote(app: App, cache: ManifestCache, file: TFile): Promise<ScannedNote | null> {
+type ScanResult =
+    | { status: "ok"; note: ScannedNote }
+    | { status: "skip"; reason: "oversize" | "empty" };
+
+async function scanNote(app: App, cache: ManifestCache, file: TFile): Promise<ScanResult> {
     const cached = cache.get(file.path);
     if (cached && cached.mtime === file.stat.mtime) {
         const content = await app.vault.cachedRead(file);
-        const sizeBytes = byteLength(content);
-        if (sizeBytes > MAX_NOTE_BYTES) {
-            return null;
+        const skip = classifySkip(content);
+        if (skip) {
+            return { status: "skip", reason: skip };
         }
         return {
-            path: file.path,
-            content,
-            contentHash: cached.contentHash,
-            sizeBytes,
-            mtime: file.stat.mtime,
+            status: "ok",
+            note: {
+                path: file.path,
+                content,
+                contentHash: cached.contentHash,
+                sizeBytes: byteLength(content),
+                mtime: file.stat.mtime,
+            },
         };
     }
     const content = await app.vault.cachedRead(file);
-    const sizeBytes = byteLength(content);
-    if (sizeBytes > MAX_NOTE_BYTES) {
-        return null;
+    const skip = classifySkip(content);
+    if (skip) {
+        return { status: "skip", reason: skip };
     }
     const contentHash = await computeSha256Hex(content);
     cache.set(file.path, { contentHash, mtime: file.stat.mtime });
     return {
-        path: file.path,
-        content,
-        contentHash,
-        sizeBytes,
-        mtime: file.stat.mtime,
+        status: "ok",
+        note: {
+            path: file.path,
+            content,
+            contentHash,
+            sizeBytes: byteLength(content),
+            mtime: file.stat.mtime,
+        },
     };
+}
+
+/** Empty / whitespace-only notes and >1 MiB bodies are never uploaded. */
+function classifySkip(content: string): "empty" | "oversize" | null {
+    if (!content.trim()) {
+        return "empty";
+    }
+    if (byteLength(content) > MAX_NOTE_BYTES) {
+        return "oversize";
+    }
+    return null;
 }
 
 /**

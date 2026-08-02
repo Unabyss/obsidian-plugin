@@ -544,7 +544,7 @@ export default class UnabyssPlugin extends Plugin {
     }
 
     private refreshSettingsTab(): void {
-        this.settingTab?.display();
+        this.settingTab?.refreshSettingsUi();
     }
 
     private async handleOAuthCallback(params: Record<string, string>): Promise<void> {

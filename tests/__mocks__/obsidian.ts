@@ -39,6 +39,14 @@ export class PluginSettingTab {
     containerEl = { empty: () => undefined, createEl: () => ({}) };
     constructor(_app: unknown, _plugin: unknown) {}
     display(): void {}
+    getSettingDefinitions(): unknown[] {
+        return [];
+    }
+    update(): void {}
+    getControlValue(_key: string): unknown {
+        return undefined;
+    }
+    setControlValue(_key: string, _value: unknown): void {}
 }
 
 export class Setting {

@@ -20,6 +20,7 @@ import {
     SettingDefinitionItem,
     SuggestModal,
     TFolder,
+    requireApiVersion,
 } from "obsidian";
 import type UnabyssPlugin from "./main";
 import { DEFAULT_EXPORT_FOLDER } from "./types";
@@ -253,9 +254,8 @@ export class UnabyssSettingTab extends PluginSettingTab {
                             "Clears the local manifest cache + inbound watermark, then runs an outbound sync " +
                             "so the server's hash-diff guard re-establishes the truth.",
                         render: (setting) => {
-                            setting.addButton((btn) =>
-                                btn
-                                    .setWarning()
+                            setting.addButton((btn) => {
+                                styleDestructiveButton(btn)
                                     .setButtonText("Force full resync")
                                     .setDisabled(this.plugin.settings.auth === null)
                                     .onClick(async () => {
@@ -269,8 +269,8 @@ export class UnabyssSettingTab extends PluginSettingTab {
                                             btn.setDisabled(this.plugin.settings.auth === null);
                                             this.refreshSettingsUi();
                                         }
-                                    }),
-                            );
+                                    });
+                            });
                         },
                     },
                 ],
@@ -326,6 +326,27 @@ export class UnabyssSettingTab extends PluginSettingTab {
 
     /** Imperative fallback for Obsidian &lt; 1.13.0. */
     display(): void {
+        this.renderLegacyTab();
+    }
+
+    hide(): void {
+        this.unsubscribeAll();
+    }
+
+    /**
+     * Prefer declarative ``update()`` on 1.13+ (gated for
+     * ``obsidianmd/no-unsupported-api``); otherwise rebuild the legacy tab.
+     */
+    refreshSettingsUi(): void {
+        if (requireApiVersion("1.13.0")) {
+            this.update();
+            return;
+        }
+        this.renderLegacyTab();
+    }
+
+    /** Imperative settings UI used when the host is below 1.13.0. */
+    private renderLegacyTab(): void {
         this.unsubscribeAll();
         const { containerEl } = this;
         containerEl.empty();
@@ -335,19 +356,6 @@ export class UnabyssSettingTab extends PluginSettingTab {
         this.renderOutboundSection(containerEl);
         this.renderInboundSection(containerEl);
         this.renderAdvancedSection(containerEl);
-    }
-
-    hide(): void {
-        this.unsubscribeAll();
-    }
-
-    /** Prefer ``update()`` on 1.13+; fall back to ``display()`` on older hosts. */
-    refreshSettingsUi(): void {
-        if (typeof this.update === "function") {
-            this.update();
-            return;
-        }
-        this.display();
     }
 
     private renderHeader(containerEl: HTMLElement): void {
@@ -599,8 +607,7 @@ export class UnabyssSettingTab extends PluginSettingTab {
                     "so the server's hash-diff guard re-establishes the truth.",
             )
             .addButton((btn) =>
-                btn
-                    .setWarning()
+                styleDestructiveButton(btn)
                     .setButtonText("Force full resync")
                     .setDisabled(this.plugin.settings.auth === null)
                     .onClick(async () => {
@@ -675,6 +682,14 @@ function describeError(err: unknown): string {
         return err.message;
     }
     return String(err);
+}
+
+/** ``setDestructive`` is 1.13+; keep ``setWarning`` for older hosts. */
+function styleDestructiveButton<T extends { setDestructive(): T; setWarning(): T }>(btn: T): T {
+    if (requireApiVersion("1.13.0")) {
+        return btn.setDestructive();
+    }
+    return btn.setWarning();
 }
 
 /**

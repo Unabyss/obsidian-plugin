@@ -100,6 +100,10 @@ export function requestUrl(): never {
     throw new Error("requestUrl is not available in unit tests; inject your own client.");
 }
 
+export function requireApiVersion(_version: string): boolean {
+    return false;
+}
+
 export type RequestUrlParam = unknown;
 export type RequestUrlResponse = unknown;
 

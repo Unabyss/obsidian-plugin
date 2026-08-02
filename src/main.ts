@@ -248,43 +248,50 @@ export default class UnabyssPlugin extends Plugin {
             | { ok: true; report: T }
             | { ok: false; err: unknown };
 
-        const outboundP: Promise<DirectionOutcome<SyncOutboundReport> | null> =
+        // Each direction already catches into DirectionOutcome, so Promise.all
+        // is enough and stays typed under our ES2018 lib (allSettled is ES2020).
+        const [outboundOutcome, inboundOutcome] = await Promise.all([
             this.settings.outboundEnabled
                 ? this.runOutboundSync(true)
-                      .then((report) => ({ ok: true as const, report }))
-                      .catch((err: unknown) => ({ ok: false as const, err }))
-                : Promise.resolve(null);
-
-        const inboundP: Promise<DirectionOutcome<SyncInboundReport> | null> =
+                      .then((report): DirectionOutcome<SyncOutboundReport> => ({
+                          ok: true,
+                          report,
+                      }))
+                      .catch((err: unknown): DirectionOutcome<SyncOutboundReport> => ({
+                          ok: false,
+                          err,
+                      }))
+                : Promise.resolve(null),
             this.settings.inboundEnabled
                 ? this.runInboundSync(true)
-                      .then((report) => ({ ok: true as const, report }))
-                      .catch((err: unknown) => ({ ok: false as const, err }))
-                : Promise.resolve(null);
-
-        const [outboundSettled, inboundSettled] = await Promise.allSettled([outboundP, inboundP]);
+                      .then((report): DirectionOutcome<SyncInboundReport> => ({
+                          ok: true,
+                          report,
+                      }))
+                      .catch((err: unknown): DirectionOutcome<SyncInboundReport> => ({
+                          ok: false,
+                          err,
+                      }))
+                : Promise.resolve(null),
+        ]);
 
         let outbound: SyncOutboundReport | null = null;
         let inbound: SyncInboundReport | null = null;
 
-        if (outboundSettled.status === "fulfilled" && outboundSettled.value) {
-            if (outboundSettled.value.ok) {
-                outbound = outboundSettled.value.report;
+        if (outboundOutcome) {
+            if (outboundOutcome.ok) {
+                outbound = outboundOutcome.report;
             } else {
-                new Notice(`Outbound failed: ${describeError(outboundSettled.value.err)}`);
+                new Notice(`Outbound failed: ${describeError(outboundOutcome.err)}`);
             }
-        } else if (outboundSettled.status === "rejected") {
-            new Notice(`Outbound failed: ${describeError(outboundSettled.reason)}`);
         }
 
-        if (inboundSettled.status === "fulfilled" && inboundSettled.value) {
-            if (inboundSettled.value.ok) {
-                inbound = inboundSettled.value.report;
+        if (inboundOutcome) {
+            if (inboundOutcome.ok) {
+                inbound = inboundOutcome.report;
             } else {
-                new Notice(`Inbound failed: ${describeError(inboundSettled.value.err)}`);
+                new Notice(`Inbound failed: ${describeError(inboundOutcome.err)}`);
             }
-        } else if (inboundSettled.status === "rejected") {
-            new Notice(`Inbound failed: ${describeError(inboundSettled.reason)}`);
         }
 
         if (outbound) {
@@ -424,21 +431,27 @@ export default class UnabyssPlugin extends Plugin {
         if (!this.api) {
             return;
         }
-        const outboundP =
+        const outboundP: Promise<void> =
             this.settings.outboundEnabled && !this.outboundInFlight
-                ? this.runOutboundSync(false).catch((err) => {
-                      console.warn("Unabyss safety-net outbound failed", err);
-                  })
+                ? this.runOutboundSync(false).then(
+                      () => undefined,
+                      (err: unknown) => {
+                          console.warn("Unabyss safety-net outbound failed", err);
+                      },
+                  )
                 : Promise.resolve();
-        const inboundP =
+        const inboundP: Promise<void> =
             this.settings.inboundEnabled && !this.inboundInFlight
                 ? this.ensureExportTargetFolder()
                       .then(() => this.runInboundSync(false))
-                      .catch((err) => {
-                          console.warn("Unabyss safety-net inbound failed", err);
-                      })
+                      .then(
+                          () => undefined,
+                          (err: unknown) => {
+                              console.warn("Unabyss safety-net inbound failed", err);
+                          },
+                      )
                 : Promise.resolve();
-        await Promise.allSettled([outboundP, inboundP]);
+        await Promise.all([outboundP, inboundP]);
     }
 
     private async ensureExportTargetFolder(): Promise<void> {

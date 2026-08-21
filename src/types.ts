@@ -33,10 +33,34 @@ export const NOTE_BODIES_MAX_PER_REQUEST = 100;
  */
 export const MAX_NOTE_BYTES = 1024 * 1024;
 
+/**
+ * Which OAuth dialect a backend speaks. "legacy" is the Django app
+ * (JSON token bodies, a dedicated simplejwt refresh route); "oauth-as"
+ * is the new Cloudflare app's RFC-standard authorization server
+ * (form-encoded token endpoint that also handles refresh and RFC 7009
+ * revocation). See `backend.ts` for how the mode is detected.
+ */
+export type BackendMode = "legacy" | "oauth-as";
+
+/** Absolute OAuth endpoints for one backend, resolved at connect time. */
+export interface BackendProfile {
+    mode: BackendMode;
+    authorizationEndpoint: string;
+    tokenEndpoint: string;
+    /** Where refresh-token rotation happens; equals tokenEndpoint on "oauth-as". */
+    refreshEndpoint: string;
+    revocationEndpoint: string;
+}
+
 export interface AuthState {
     accessToken: string;
     refreshToken: string;
     userEmail: string;
+    /**
+     * The backend these tokens came from. Absent on auth persisted by
+     * plugin versions before dual-mode support - those are legacy tokens.
+     */
+    backend?: BackendProfile;
 }
 
 /**

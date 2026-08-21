@@ -368,8 +368,9 @@ export class UnabyssSettingTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName("API base URL")
             .setDesc(
-                "Unabyss API origin. The plugin opens the matching consent page in your browser " +
-                    "(api.<host> is rewritten to app.<host> automatically).",
+                "Unabyss origin. The plugin detects which backend it is talking to and opens " +
+                    "the matching consent page in your browser - keep the default for the " +
+                    "current app, or point it at the new app's address after the migration.",
             )
             .addText((text) => {
                 text.setPlaceholder("https://api.unabyss.com")

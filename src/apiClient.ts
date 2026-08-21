@@ -4,9 +4,11 @@
  * Wraps the manifest-first plugin endpoints
  * (`/api/ingest/obsidian/manifest-chunks/`, `.../notes/upload/`,
  * `.../sync-finalize/`), the dashboard endpoints
- * (`/api/ingest/obsidian/vaults/...`), the inbound exports listing
- * (`/api/exports/changed-since/`), and the JWT refresh endpoint
- * (`/api/auth/token/refresh/`).
+ * (`/api/ingest/obsidian/vaults/...`), and the inbound exports listing
+ * (`/api/exports/changed-since/`). These paths are identical on both
+ * backends (the new one ignores the trailing slashes); only token
+ * refresh differs, and that goes through the {@link BackendProfile}
+ * stamped into the stored auth.
  *
  * Authentication: every authenticated call attaches
  * ``Authorization: Bearer <access>``. On a 401 response, the client
@@ -16,9 +18,11 @@
  */
 
 import { requestUrl, RequestUrlParam, RequestUrlResponse } from "obsidian";
-import { normalizeApiBaseUrl, rotateRefreshToken } from "./oauth";
+import { normalizeApiBaseUrl, resolveBackendProfile } from "./backend";
+import { rotateRefreshToken } from "./oauth";
 import {
     AuthState,
+    BackendProfile,
     ExportRow,
     ManifestChunkRequest,
     ManifestChunkResponse,
@@ -67,6 +71,8 @@ export interface ApiClientOptions {
 export class UnabyssApiClient {
     private apiBaseUrl: string;
     private auth: AuthState;
+    /** The backend that minted `auth`; refresh rotation must speak its dialect. */
+    private backend: BackendProfile;
     private readonly saveAuth: AuthSaver;
     private readonly clearAuth: AuthClearHook;
     private refreshInFlight: Promise<void> | null = null;
@@ -74,16 +80,19 @@ export class UnabyssApiClient {
     constructor(opts: ApiClientOptions) {
         this.apiBaseUrl = normalizeApiBaseUrl(opts.apiBaseUrl);
         this.auth = opts.auth;
+        this.backend = resolveBackendProfile(this.apiBaseUrl, opts.auth);
         this.saveAuth = opts.saveAuth;
         this.clearAuth = opts.clearAuth;
     }
 
     updateBaseUrl(apiBaseUrl: string): void {
         this.apiBaseUrl = normalizeApiBaseUrl(apiBaseUrl);
+        this.backend = resolveBackendProfile(this.apiBaseUrl, this.auth);
     }
 
     updateAuth(auth: AuthState): void {
         this.auth = auth;
+        this.backend = resolveBackendProfile(this.apiBaseUrl, auth);
     }
 
     async postManifestChunk(body: ManifestChunkRequest): Promise<ManifestChunkResponse> {
@@ -196,7 +205,7 @@ export class UnabyssApiClient {
         }
         this.refreshInFlight = (async () => {
             try {
-                const tokens = await rotateRefreshToken(this.apiBaseUrl, this.auth.refreshToken);
+                const tokens = await rotateRefreshToken(this.backend, this.auth.refreshToken);
                 this.auth = {
                     ...this.auth,
                     accessToken: tokens.access,

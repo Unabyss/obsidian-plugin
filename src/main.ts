@@ -27,6 +27,7 @@ import { Notice, Plugin, TAbstractFile, TFile, addIcon, normalizePath } from "ob
 import { UnabyssApiClient } from "./apiClient";
 import { UNABYSS_ICON_ID, UNABYSS_ICON_SVG } from "./logo";
 import { EMPTY_MANIFEST_CACHE, ManifestCache, normalizeManifestCacheData } from "./manifestCache";
+import { resolveBackendProfile } from "./backend";
 import { OAuthClient, revokeTokens } from "./oauth";
 import { ProgressTracker } from "./progress";
 import { UnabyssSettingTab } from "./settings";
@@ -215,7 +216,8 @@ export default class UnabyssPlugin extends Plugin {
     async disconnect(): Promise<void> {
         if (this.settings.auth) {
             try {
-                await revokeTokens(this.settings.apiBaseUrl, this.settings.auth.accessToken);
+                const profile = resolveBackendProfile(this.settings.apiBaseUrl, this.settings.auth);
+                await revokeTokens(profile, this.settings.auth);
             } catch (err) {
                 console.warn("Unabyss: revoke call failed; clearing local tokens anyway.", err);
             }

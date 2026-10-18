@@ -23,7 +23,7 @@ import {
     requireApiVersion,
 } from "obsidian";
 import type UnabyssPlugin from "./main";
-import { DEFAULT_EXPORT_FOLDER } from "./types";
+import { DEFAULT_API_BASE_URL, DEFAULT_EXPORT_FOLDER } from "./types";
 import { ProgressSnapshot, formatProgress } from "./progress";
 import { ExportDeleteBehaviour } from "./types";
 import { renderUnabyssLogo } from "./logo";
@@ -240,12 +240,12 @@ export class UnabyssSettingTab extends PluginSettingTab {
                     {
                         name: "API base URL",
                         desc:
-                            "Unabyss API origin. The plugin opens the matching consent page in your browser " +
-                            "(api.<host> is rewritten to app.<host> automatically).",
+                            "Unabyss origin. The plugin detects which backend it is talking to and opens " +
+                            "the matching consent page in your browser.",
                         control: {
                             type: "text",
                             key: "apiBaseUrl",
-                            placeholder: "https://api.unabyss.com",
+                            placeholder: DEFAULT_API_BASE_URL,
                         },
                     },
                     {
@@ -293,7 +293,7 @@ export class UnabyssSettingTab extends PluginSettingTab {
                 const trimmed =
                     typeof value === "string" && value.trim()
                         ? value.trim()
-                        : "https://api.unabyss.com";
+                        : DEFAULT_API_BASE_URL;
                 settings.apiBaseUrl = trimmed;
                 await this.plugin.saveSettings();
                 this.plugin.rebuildApiClient();
@@ -369,14 +369,13 @@ export class UnabyssSettingTab extends PluginSettingTab {
             .setName("API base URL")
             .setDesc(
                 "Unabyss origin. The plugin detects which backend it is talking to and opens " +
-                    "the matching consent page in your browser - keep the default for the " +
-                    "current app, or point it at the new app's address after the migration.",
+                    "the matching consent page in your browser.",
             )
             .addText((text) => {
-                text.setPlaceholder("https://api.unabyss.com")
+                text.setPlaceholder(DEFAULT_API_BASE_URL)
                     .setValue(this.plugin.settings.apiBaseUrl)
                     .onChange(async (value) => {
-                        const trimmed = value.trim() || "https://api.unabyss.com";
+                        const trimmed = value.trim() || DEFAULT_API_BASE_URL;
                         this.plugin.settings.apiBaseUrl = trimmed;
                         await this.plugin.saveSettings();
                         this.plugin.rebuildApiClient();

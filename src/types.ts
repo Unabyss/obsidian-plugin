@@ -10,7 +10,13 @@
  * (see README threat model).
  */
 
-export const DEFAULT_API_BASE_URL = "https://api.unabyss.com";
+export const DEFAULT_API_BASE_URL = "https://app.unabyss.com";
+/**
+ * The default before 1.2.1: the Django API host, retired at the
+ * Cloudflare cutover. Saved settings still carrying it are migrated to
+ * {@link DEFAULT_API_BASE_URL} on load (see `migrateApiBaseUrl`).
+ */
+export const LEGACY_DEFAULT_API_BASE_URL = "https://api.unabyss.com";
 export const OAUTH_CLIENT_ID = "obsidian";
 export const OAUTH_REDIRECT_URI = "obsidian://unabyss/auth-callback";
 export const OAUTH_PROTOCOL_ACTION = "unabyss/auth-callback";

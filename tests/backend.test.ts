@@ -27,6 +27,7 @@ import {
     deriveConsentUrl,
     discoverBackend,
     legacyBackendProfile,
+    migrateApiBaseUrl,
     resolveBackendProfile,
 } from "../src/backend";
 import { AuthState, BackendProfile } from "../src/types";
@@ -174,5 +175,22 @@ describe("deriveConsentUrl", () => {
         expect(deriveConsentUrl("https://next.unabyss.com")).toBe(
             "https://next.unabyss.com/oauth/authorize",
         );
+    });
+});
+
+describe("migrateApiBaseUrl", () => {
+    it("moves the retired legacy default to the new app", () => {
+        expect(migrateApiBaseUrl("https://api.unabyss.com")).toBe("https://app.unabyss.com");
+    });
+
+    it("matches the legacy default with a trailing slash or whitespace", () => {
+        expect(migrateApiBaseUrl("https://api.unabyss.com/")).toBe("https://app.unabyss.com");
+        expect(migrateApiBaseUrl(" https://api.unabyss.com ")).toBe("https://app.unabyss.com");
+    });
+
+    it("keeps any host the user chose", () => {
+        expect(migrateApiBaseUrl("https://next.unabyss.com")).toBe("https://next.unabyss.com");
+        expect(migrateApiBaseUrl("https://app.unabyss.com")).toBe("https://app.unabyss.com");
+        expect(migrateApiBaseUrl("http://localhost:8787")).toBe("http://localhost:8787");
     });
 });

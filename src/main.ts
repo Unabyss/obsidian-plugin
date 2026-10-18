@@ -27,7 +27,7 @@ import { Notice, Plugin, TAbstractFile, TFile, addIcon, normalizePath } from "ob
 import { UnabyssApiClient } from "./apiClient";
 import { UNABYSS_ICON_ID, UNABYSS_ICON_SVG } from "./logo";
 import { EMPTY_MANIFEST_CACHE, ManifestCache, normalizeManifestCacheData } from "./manifestCache";
-import { resolveBackendProfile } from "./backend";
+import { migrateApiBaseUrl, resolveBackendProfile } from "./backend";
 import { OAuthClient, revokeTokens } from "./oauth";
 import { ProgressTracker } from "./progress";
 import { UnabyssSettingTab } from "./settings";
@@ -522,6 +522,7 @@ export default class UnabyssPlugin extends Plugin {
         if (!settings.vaultId) {
             settings.vaultId = generateVaultId();
         }
+        settings.apiBaseUrl = migrateApiBaseUrl(settings.apiBaseUrl);
         this.settings = settings;
         this.manifestCacheData = normalizeManifestCacheData(incoming.manifestCache);
         await this.savePluginData();

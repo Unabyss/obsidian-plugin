@@ -85,6 +85,13 @@ export const DELETED_EXPORTS_SUBFOLDER = "Deleted";
 export const OUTBOUND_DEBOUNCE_MS = 5_000;
 
 /**
+ * Retry delay after ``sync-finalize/`` answers 409 ``import_in_progress``:
+ * the server runs one import per vault, and the earlier one usually
+ * finishes within a minute.
+ */
+export const OUTBOUND_BUSY_RETRY_MS = 60_000;
+
+/**
  * Safety-net timer cadence. Runs both directions regardless of file
  * events so the plugin recovers from missed events / external writes.
  */
@@ -270,13 +277,15 @@ export interface InboundFileOutcome {
     exportId: string;
     title: string;
     vaultPath: string;
-    action: "written" | "skipped" | "deleted" | "moved";
+    action: "written" | "unchanged" | "skipped" | "deleted" | "moved";
     error?: string;
 }
 
 export interface SyncInboundReport {
     polled: number;
     written: number;
+    /** Already on disk byte-for-byte; left alone so no modify event re-triggers outbound. */
+    unchanged: number;
     deleted: number;
     moved: number;
     skipped: number;

@@ -53,6 +53,23 @@ export class ApiError extends Error {
     }
 }
 
+/**
+ * True for the server's "an import is already running for this vault"
+ * refusal (409 ``import_in_progress`` from ``sync-finalize/``). The notes
+ * uploaded in that pass are kept server-side; the next finalize picks them up.
+ */
+export function isImportInProgressError(err: unknown): boolean {
+    if (!(err instanceof ApiError) || err.status !== 409) {
+        return false;
+    }
+    try {
+        const body = JSON.parse(err.bodyText) as { error?: { code?: unknown } };
+        return body?.error?.code === "import_in_progress";
+    } catch {
+        return false;
+    }
+}
+
 /** Thrown when the refresh-on-401 path also fails (the user must reconnect). */
 export class AuthExpiredError extends Error {
     constructor(message = "Authentication has expired. Reconnect to continue syncing.") {

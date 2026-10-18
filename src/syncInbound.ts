@@ -63,6 +63,7 @@ export async function runInboundSync(deps: InboundSyncDeps): Promise<SyncInbound
     const report: SyncInboundReport = {
         polled: 0,
         written: 0,
+        unchanged: 0,
         deleted: 0,
         moved: 0,
         skipped: 0,
@@ -163,6 +164,17 @@ async function applyUpsert(
 
     const existing = deps.app.vault.getAbstractFileByPath(targetPath);
     if (existing && existing instanceof TFile) {
+        // The changed-since window is inclusive, so the newest export comes back on
+        // every poll. Rewriting it fires a modify event, which schedules an outbound
+        // sync that collides with the import the previous pass just started.
+        if ((await deps.app.vault.read(existing)) === body) {
+            return {
+                exportId: row.id,
+                title: row.title,
+                vaultPath: targetPath,
+                action: "unchanged",
+            };
+        }
         await deps.app.vault.modify(existing, body);
     } else {
         await deps.app.vault.create(targetPath, body);
@@ -235,6 +247,9 @@ function absorbOutcome(report: SyncInboundReport, outcome: InboundFileOutcome): 
     switch (outcome.action) {
         case "written":
             report.written += 1;
+            break;
+        case "unchanged":
+            report.unchanged += 1;
             break;
         case "deleted":
             report.deleted += 1;

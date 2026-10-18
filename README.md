@@ -70,7 +70,7 @@ Open Settings -> Community plugins -> Unabyss.
 
 | Setting                                  | Default                   | Notes |
 |------------------------------------------|---------------------------|-------|
-| API base URL                             | `https://api.unabyss.com` | Set to your self-hosted backend if applicable. The plugin opens `https://app.<host>` in your browser for the consent page; point at the API host you have if your deploy doesn't follow the `api.` / `app.` convention. |
+| API base URL                             | `https://app.unabyss.com` | Set to your self-hosted backend if applicable. The plugin detects the backend and opens its consent page in your browser. A saved `https://api.unabyss.com` (the default before 1.2.1) is moved to `https://app.unabyss.com` on load. |
 | Account                                  | (empty until you connect) | Click **Connect** to start the OAuth PKCE flow. |
 | Sync outbound                            | on                        | Master switch for the Obsidian -> Unabyss direction. When off, neither file-change events, the daily safety-net timer, nor the manual button sends notes to Unabyss. |
 | Include folders                          | (empty = whole vault)     | Vault folders included by outbound sync. Click **Add folder** to pick from a list of every folder in the vault. Empty = sync everything. |

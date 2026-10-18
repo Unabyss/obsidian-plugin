@@ -73,7 +73,14 @@ class FakeVault {
         return (file as TFile & { __body?: string }).__body ?? "";
     }
 
+    async read(file: TFile): Promise<string> {
+        return (file as TFile & { __body?: string }).__body ?? "";
+    }
+
+    modifyCalls: string[] = [];
+
     async modify(file: TFile, data: string): Promise<void> {
+        this.modifyCalls.push(file.path);
         (file as TFile & { __body?: string }).__body = data;
     }
 
@@ -87,6 +94,9 @@ class FakeVault {
         file.name = path.split("/").pop() ?? path;
         (file as TFile & { __body?: string }).__body = data;
         this.files.set(path, file);
+        // Like the real vault, list the file under its folder so trailer lookups find it.
+        const parent = path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : "/";
+        this.folders.get(parent)?.children.push(file);
         return file;
     }
 
@@ -201,5 +211,57 @@ describe("runInboundSync watermark advancement", () => {
         expect(vault.createCalls).toHaveLength(1);
         expect(vault.createCalls[0].data).toContain("<!-- unabyss-export-id: uuid-abc -->");
         expect(vault.createCalls[0].data.startsWith("# Daily Log")).toBe(true);
+    });
+});
+
+describe("runInboundSync re-polled exports", () => {
+    // changed-since is inclusive, so the newest export comes back on every poll.
+    function apiReturning(rows: ExportRow[]): ApiStub {
+        return {
+            async getChangedExports() {
+                return { count: rows.length, next: null, previous: null, results: rows };
+            },
+        };
+    }
+
+    async function sync(vault: FakeVault, cache: ManifestCache, rows: ExportRow[]) {
+        return runInboundSync({
+            app: setupApp(vault),
+            api: apiReturning(rows) as unknown as Parameters<typeof runInboundSync>[0]["api"],
+            cache,
+            targetFolder: "Exports",
+            deleteBehaviour: "leave",
+        });
+    }
+
+    it("leaves an identical file untouched so no modify event re-triggers outbound", async () => {
+        const vault = new FakeVault(["Exports"]);
+        const { cache } = setupCache();
+        const row = makeRow("uuid-same", "Daily Log", "2026-01-01T00:00:00Z");
+
+        const first = await sync(vault, cache, [row]);
+        const second = await sync(vault, cache, [row]);
+
+        expect(first.written).toEqual(1);
+        expect(second.written).toEqual(0);
+        expect(second.unchanged).toEqual(1);
+        expect(second.errors).toHaveLength(0);
+        expect(vault.modifyCalls).toEqual([]);
+        expect(vault.createCalls).toHaveLength(1);
+    });
+
+    it("rewrites the file when the export's markdown changed", async () => {
+        const vault = new FakeVault(["Exports"]);
+        const { cache } = setupCache();
+        const row = makeRow("uuid-edit", "Daily Log", "2026-01-01T00:00:00Z");
+
+        await sync(vault, cache, [row]);
+        const report = await sync(vault, cache, [
+            { ...row, markdown: row.markdown + "\n\nEdited.", updated_at: "2026-01-02T00:00:00Z" },
+        ]);
+
+        expect(report.written).toEqual(1);
+        expect(report.unchanged).toEqual(0);
+        expect(vault.modifyCalls).toEqual(["Exports/Daily Log.md"]);
     });
 });

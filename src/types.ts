@@ -10,7 +10,13 @@
  * (see README threat model).
  */
 
-export const DEFAULT_API_BASE_URL = "https://api.unabyss.com";
+export const DEFAULT_API_BASE_URL = "https://app.unabyss.com";
+/**
+ * The default before 1.2.1: the Django API host, retired at the
+ * Cloudflare cutover. Saved settings still carrying it are migrated to
+ * {@link DEFAULT_API_BASE_URL} on load (see `migrateApiBaseUrl`).
+ */
+export const LEGACY_DEFAULT_API_BASE_URL = "https://api.unabyss.com";
 export const OAUTH_CLIENT_ID = "obsidian";
 export const OAUTH_REDIRECT_URI = "obsidian://unabyss/auth-callback";
 export const OAUTH_PROTOCOL_ACTION = "unabyss/auth-callback";
@@ -77,6 +83,13 @@ export const DELETED_EXPORTS_SUBFOLDER = "Deleted";
  * off an outbound sync. Aligns with phases.md §"main.ts deltas".
  */
 export const OUTBOUND_DEBOUNCE_MS = 5_000;
+
+/**
+ * Retry delay after ``sync-finalize/`` answers 409 ``import_in_progress``:
+ * the server runs one import per vault, and the earlier one usually
+ * finishes within a minute.
+ */
+export const OUTBOUND_BUSY_RETRY_MS = 60_000;
 
 /**
  * Safety-net timer cadence. Runs both directions regardless of file
@@ -264,13 +277,15 @@ export interface InboundFileOutcome {
     exportId: string;
     title: string;
     vaultPath: string;
-    action: "written" | "skipped" | "deleted" | "moved";
+    action: "written" | "unchanged" | "skipped" | "deleted" | "moved";
     error?: string;
 }
 
 export interface SyncInboundReport {
     polled: number;
     written: number;
+    /** Already on disk byte-for-byte; left alone so no modify event re-triggers outbound. */
+    unchanged: number;
     deleted: number;
     moved: number;
     skipped: number;

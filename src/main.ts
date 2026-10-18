@@ -24,10 +24,10 @@
  */
 
 import { Notice, Plugin, TAbstractFile, TFile, addIcon, normalizePath } from "obsidian";
-import { UnabyssApiClient } from "./apiClient";
+import { UnabyssApiClient, isImportInProgressError } from "./apiClient";
 import { UNABYSS_ICON_ID, UNABYSS_ICON_SVG } from "./logo";
 import { EMPTY_MANIFEST_CACHE, ManifestCache, normalizeManifestCacheData } from "./manifestCache";
-import { resolveBackendProfile } from "./backend";
+import { migrateApiBaseUrl, resolveBackendProfile } from "./backend";
 import { OAuthClient, revokeTokens } from "./oauth";
 import { ProgressTracker } from "./progress";
 import { UnabyssSettingTab } from "./settings";
@@ -39,12 +39,24 @@ import {
     DEFAULT_SETTINGS,
     ManifestCacheData,
     OAUTH_PROTOCOL_ACTION,
+    OUTBOUND_BUSY_RETRY_MS,
     OUTBOUND_DEBOUNCE_MS,
     PluginSettings,
     SAFETY_NET_INTERVAL_MS,
     SyncInboundReport,
     SyncOutboundReport,
 } from "./types";
+
+const OUTBOUND_BUSY_MESSAGE =
+    "Unabyss is still processing an earlier sync - retrying in a minute.";
+
+/** Outbound reached the server while its previous import was still running; a retry is scheduled. */
+class OutboundBusyError extends Error {
+    constructor() {
+        super(OUTBOUND_BUSY_MESSAGE);
+        this.name = "OutboundBusyError";
+    }
+}
 
 /**
  * On-disk shape of ``data.json``: plugin settings (with ``auth``
@@ -121,7 +133,11 @@ export default class UnabyssPlugin extends Plugin {
                         );
                     })
                     .catch((err) => {
-                        new Notice(`Unabyss outbound failed: ${describeError(err)}`);
+                        new Notice(
+                            err instanceof OutboundBusyError
+                                ? `Unabyss outbound \u2014 ${OUTBOUND_BUSY_MESSAGE}`
+                                : `Unabyss outbound failed: ${describeError(err)}`,
+                        );
                     });
             },
         });
@@ -283,6 +299,8 @@ export default class UnabyssPlugin extends Plugin {
         if (outboundOutcome) {
             if (outboundOutcome.ok) {
                 outbound = outboundOutcome.report;
+            } else if (outboundOutcome.err instanceof OutboundBusyError) {
+                new Notice(`Outbound \u2014 ${OUTBOUND_BUSY_MESSAGE}`);
             } else {
                 new Notice(`Outbound failed: ${describeError(outboundOutcome.err)}`);
             }
@@ -342,6 +360,13 @@ export default class UnabyssPlugin extends Plugin {
             await this.savePluginData();
             return report;
         } catch (err) {
+            if (isImportInProgressError(err)) {
+                // Not a failure: this pass's uploads are kept server-side and the
+                // retry's finalize picks them up once the running import finishes.
+                this.outboundProgress.succeed(OUTBOUND_BUSY_MESSAGE);
+                this.scheduleOutboundDebounce(OUTBOUND_BUSY_RETRY_MS);
+                throw new OutboundBusyError();
+            }
             this.outboundProgress.fail(describeError(err));
             throw err;
         } finally {
@@ -464,7 +489,7 @@ export default class UnabyssPlugin extends Plugin {
         await this.savePluginData();
     }
 
-    private scheduleOutboundDebounce(): void {
+    private scheduleOutboundDebounce(delayMs = OUTBOUND_DEBOUNCE_MS): void {
         if (this.outboundDebounceTimer !== null) {
             window.clearTimeout(this.outboundDebounceTimer);
         }
@@ -473,7 +498,7 @@ export default class UnabyssPlugin extends Plugin {
             this.runOutboundSync(false).catch((err) => {
                 console.warn("Unabyss debounced outbound failed", err);
             });
-        }, OUTBOUND_DEBOUNCE_MS);
+        }, delayMs);
     }
 
     private cancelOutboundDebounce(): void {
@@ -522,6 +547,7 @@ export default class UnabyssPlugin extends Plugin {
         if (!settings.vaultId) {
             settings.vaultId = generateVaultId();
         }
+        settings.apiBaseUrl = migrateApiBaseUrl(settings.apiBaseUrl);
         this.settings = settings;
         this.manifestCacheData = normalizeManifestCacheData(incoming.manifestCache);
         await this.savePluginData();

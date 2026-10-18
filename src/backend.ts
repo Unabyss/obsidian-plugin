@@ -17,7 +17,12 @@
  */
 
 import { requestUrl } from "obsidian";
-import { AuthState, BackendProfile } from "./types";
+import {
+    AuthState,
+    BackendProfile,
+    DEFAULT_API_BASE_URL,
+    LEGACY_DEFAULT_API_BASE_URL,
+} from "./types";
 
 /**
  * Build the user-facing consent URL for the legacy backend.
@@ -45,6 +50,18 @@ export function deriveConsentUrl(apiBaseUrl: string): string {
 /** Strip the trailing slash so callers can always append `/api/...` cleanly. */
 export function normalizeApiBaseUrl(apiBaseUrl: string): string {
     return apiBaseUrl.replace(/\/$/, "");
+}
+
+/**
+ * Move a saved base URL off the retired legacy default. Every install
+ * before 1.2.1 persisted `https://api.unabyss.com` into data.json, so a
+ * new default alone would never reach them. Any other host - staging, a
+ * self-hosted deploy - is the user's choice and is kept.
+ */
+export function migrateApiBaseUrl(apiBaseUrl: string): string {
+    return normalizeApiBaseUrl(apiBaseUrl.trim()) === LEGACY_DEFAULT_API_BASE_URL
+        ? DEFAULT_API_BASE_URL
+        : apiBaseUrl;
 }
 
 /** The legacy Django dialect, spelled out. */
